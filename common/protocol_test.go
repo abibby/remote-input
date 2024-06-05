@@ -11,20 +11,20 @@ func TestKeyEvent_UnmarshalBinary(t *testing.T) {
 	}
 	tests := []struct {
 		name    string
-		k       *KeyEvent
+		k       *InputEvent
 		args    args
 		wantErr bool
-		wantK   *KeyEvent
+		wantK   *InputEvent
 	}{
 		{
 			name: "a",
-			k:    &KeyEvent{},
+			k:    &InputEvent{},
 			args: args{[]byte{
 				0x00,       // version
 				0x00, 0x02, // key code
 				0x00, 0x00, 0x00, 0x03, // flags
 			}},
-			wantK: &KeyEvent{Key: 2, Flags: 3},
+			wantK: &InputEvent{Key: 2, Flags: 3},
 		},
 	}
 	for _, tt := range tests {
@@ -42,7 +42,7 @@ func TestKeyEvent_UnmarshalBinary(t *testing.T) {
 func TestKeyEvent_MarshalBinary(t *testing.T) {
 	tests := []struct {
 		name     string
-		k        *KeyEvent
+		k        *InputEvent
 		wantData []byte
 		wantErr  bool
 	}{

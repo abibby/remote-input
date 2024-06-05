@@ -10,16 +10,17 @@ import (
 
 const protoVersion = 0
 
-type KeyEvent struct {
+type InputEvent struct {
+	Type uint8
 	Key   windows.VirtualKey
 	Flags windows.KeyEventFlag
 }
 
-var _ encoding.BinaryMarshaler = (*KeyEvent)(nil)
-var _ encoding.BinaryUnmarshaler = (*KeyEvent)(nil)
+var _ encoding.BinaryMarshaler = (*InputEvent)(nil)
+var _ encoding.BinaryUnmarshaler = (*InputEvent)(nil)
 
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
-func (k *KeyEvent) UnmarshalBinary(data []byte) error {
+func (k *InputEvent) UnmarshalBinary(data []byte) error {
 	if len(data) != 7 {
 		return fmt.Errorf("invalid length")
 	}
@@ -36,7 +37,7 @@ func (k *KeyEvent) UnmarshalBinary(data []byte) error {
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
-func (k *KeyEvent) MarshalBinary() (data []byte, err error) {
+func (k *InputEvent) MarshalBinary() (data []byte, err error) {
 	version := byte(1)
 	data = make([]byte, 7)
 	data[0] = version
