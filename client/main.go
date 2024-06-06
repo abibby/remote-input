@@ -11,8 +11,8 @@ import (
 func main() {
 	log.Printf("started")
 
-	// serverIP := "192.168.2.50:38808"
-	serverIP := "localhost:38808"
+	serverIP := "192.168.2.38:38808"
+	// serverIP := "localhost:38808"
 
 	conn, err := net.Dial("tcp", serverIP)
 	if err != nil {
