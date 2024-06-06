@@ -4,44 +4,28 @@ import (
 	"encoding"
 	"encoding/binary"
 	"fmt"
-
-	"github.com/abibby/remote-input/windows"
+	"time"
 )
 
-const protoVersion = 0
-
 type InputEvent struct {
-	Type uint8
-	Key   windows.VirtualKey
-	Flags windows.KeyEventFlag
+	Time  time.Time
+	Type  uint16
+	Code  uint16
+	Value int32
 }
 
-var _ encoding.BinaryMarshaler = (*InputEvent)(nil)
 var _ encoding.BinaryUnmarshaler = (*InputEvent)(nil)
 
-// UnmarshalBinary implements encoding.BinaryUnmarshaler.
-func (k *InputEvent) UnmarshalBinary(data []byte) error {
-	if len(data) != 7 {
+func (e *InputEvent) UnmarshalBinary(b []byte) error {
+	if len(b) != 24 {
 		return fmt.Errorf("invalid length")
 	}
+	sec := binary.LittleEndian.Uint64(b[0:8])
+	usec := binary.LittleEndian.Uint64(b[8:16])
+	e.Time = time.Unix(int64(sec), int64(usec))
 
-	version := data[0]
-	if version != protoVersion {
-		return fmt.Errorf("invalid version: expected %d got %d", protoVersion, version)
-	}
-	key := binary.BigEndian.Uint16(data[1:])
-	flags := binary.BigEndian.Uint32(data[3:])
-	k.Key = windows.VirtualKey(key)
-	k.Flags = windows.KeyEventFlag(flags)
+	e.Type = binary.LittleEndian.Uint16(b[16:18])
+	e.Code = binary.LittleEndian.Uint16(b[18:20])
+	e.Value = int32(binary.LittleEndian.Uint32(b[20:]))
 	return nil
-}
-
-// MarshalBinary implements encoding.BinaryMarshaler.
-func (k *InputEvent) MarshalBinary() (data []byte, err error) {
-	version := byte(1)
-	data = make([]byte, 7)
-	data[0] = version
-	binary.BigEndian.PutUint16(data[1:], uint16(k.Key))
-	binary.BigEndian.PutUint32(data[3:], uint32(k.Flags))
-	return data, nil
 }
