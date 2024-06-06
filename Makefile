@@ -9,12 +9,10 @@ run-client: bin/client
 run-server: bin/server
 	./bin/server
 
-bin/client: FORCE
-	mkdir -p bin
+bin/client: FORCE bin
 	$(GC) build -o ./bin/client ./client
 
-bin/server: FORCE
-	mkdir -p bin
+bin/server: FORCE bin
 	$(GC) build -o ./bin/server ./server 
 
 tidy:
@@ -23,5 +21,8 @@ tidy:
 install_go:
 	go install golang.org/dl/$(GO_VERSION)@latest
 	$(GC) download
+
+bin:
+	mkdir bin
 
 FORCE: ;
