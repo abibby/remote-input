@@ -1,5 +1,9 @@
 GO_VERSION := go1.22.4
-GC := ~/go/bin/$(GO_VERSION)
+ifeq ($(OS), Windows_NT)
+	GC := go
+else
+	GC := ~/go/bin/$(GO_VERSION)
+endif
 
 all: bin/client bin/server
 

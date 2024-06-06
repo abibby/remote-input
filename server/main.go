@@ -32,10 +32,11 @@ func (m *ConnMux) Write(p []byte) (n int, err error) {
 	toRemove := make([]net.Conn, 0, len(m.conns))
 	for _, c := range m.conns {
 		n, err = c.Write(p)
-		if err == io.EOF {
+		if err != nil {
 			toRemove = append(toRemove, c)
-		} else if err != nil {
-			errs = append(errs, err)
+			if err != io.EOF {
+				errs = append(errs, err)
+			}
 		}
 		if n > maxN {
 			maxN = n
@@ -140,14 +141,6 @@ func readDevice(devicePath string, mux *ConnMux) {
 			log.Fatal(err)
 		}
 
-		// fmt.Printf("%v", len(b))
-
-		// e := &common.InputEvent{}
-
-		// err = e.UnmarshalBinary(b)
-		// if err != nil {
-		// 	log.Fatal(err)
-		// }
 		_, err = mux.Write(b)
 		if err != nil {
 			log.Print(err)
