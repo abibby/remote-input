@@ -7,8 +7,8 @@ import (
 
 type MouseInputEvent struct {
 	Button byte
-	X      byte
-	Y      byte
+	X      int8
+	Y      int8
 }
 
 var _ encoding.BinaryUnmarshaler = (*MouseInputEvent)(nil)
@@ -32,8 +32,8 @@ func (e *MouseInputEvent) UnmarshalBinary(b []byte) error {
 		return fmt.Errorf("invalid length expecting 24 recieved %d", len(b))
 	}
 	e.Button = b[0]
-	e.X = b[1]
-	e.Y = b[2]
+	e.X = int8(b[1])
+	e.Y = int8(b[2])
 	return nil
 }
 
@@ -41,8 +41,8 @@ func (e *MouseInputEvent) UnmarshalBinary(b []byte) error {
 func (e *MouseInputEvent) MarshalBinary() (data []byte, err error) {
 	return []byte{
 		e.Button,
-		e.X,
-		e.Y,
+		byte(e.X),
+		byte(e.Y),
 	}, nil
 }
 
