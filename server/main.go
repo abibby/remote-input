@@ -119,7 +119,7 @@ func main() {
 	for _, device := range devices {
 		if strings.HasSuffix(device, "-kbd") {
 			go readDevice(device, mux, &common.KeyboardInputEvent{})
-		} else if strings.HasSuffix(device, "-mouse") || device == "/dev/input/mice" {
+		} else if device == "/dev/input/mice" {
 			go readDevice(device, mux, &common.MouseInputEvent{})
 		} else {
 			log.Printf("unknown device %s", device)
@@ -136,8 +136,6 @@ func main() {
 }
 
 func readDevice[T common.Event](devicePath string, w io.Writer, e T) {
-	// serverIP := "localhost:38808"
-
 	f, err := os.Open(devicePath)
 	if err != nil {
 		log.Fatal(err)
@@ -158,7 +156,7 @@ func readDevice[T common.Event](devicePath string, w io.Writer, e T) {
 			log.Print(err)
 			continue
 		}
-		// fmt.Printf("%#v\n", e)
+
 		out, err := e.InputEvent().MarshalBinary()
 		if err != nil {
 			log.Print(err)
