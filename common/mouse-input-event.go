@@ -47,11 +47,11 @@ func (e *MouseInputEvent) MarshalBinary() (data []byte, err error) {
 }
 
 func (e *MouseInputEvent) ButtonLeft() bool {
-	return e.Button&0x1 != 0
+	return e.Button&1 != 0
 }
 func (e *MouseInputEvent) ButtonRight() bool {
-	return e.Button&0x2 != 0
+	return e.Button&2 != 0
 }
 func (e *MouseInputEvent) ButtonMiddle() bool {
-	return e.Button&0x4 != 0
+	return e.Button&4 != 0
 }

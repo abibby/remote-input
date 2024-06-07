@@ -1,9 +1,11 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"log"
 	"net"
+	"strconv"
 
 	"github.com/abibby/remote-input/common"
 	"github.com/abibby/remote-input/windows"
@@ -24,6 +26,7 @@ func main() {
 
 	log.Printf("connected to %s", serverIP)
 
+	lastMouseEvent := &common.MouseInputEvent{}
 	b := make([]byte, 32)
 	for {
 		e := &common.InputEvent{}
@@ -45,23 +48,33 @@ func main() {
 		if e.Keyboard != nil {
 			handleKeyboard(e.Keyboard)
 		} else if e.Mouse != nil {
-			handleMouse(e.Mouse)
+			handleMouse(e.Mouse, lastMouseEvent)
+			lastMouseEvent = e.Mouse
 		}
 
 	}
 
 }
 
-func handleMouse(e *common.MouseInputEvent) {
-	flags := user32util.MouseEventFMove
-
-	if e.ButtonLeft() {
-		flags &= user32util.MouseEventFLeftDown
+func handleMouse(e *common.MouseInputEvent, last *common.MouseInputEvent) {
+	var flags uint32
+	if e.ButtonLeft() && !last.ButtonLeft() {
+		flags |= user32util.MouseEventFLeftDown
 	}
-	if e.ButtonRight() {
-		flags &= user32util.MouseEventFRightDown
+	if !e.ButtonLeft() && last.ButtonLeft() {
+		flags |= user32util.MouseEventFLeftUp
+	}
+	if e.ButtonRight() && !last.ButtonRight() {
+		flags |= user32util.MouseEventFRightDown
+	}
+	if !e.ButtonRight() && last.ButtonRight() {
+		flags |= user32util.MouseEventFRightUp
 	}
 
+	if e.X != 0 || e.Y != 0 {
+		flags |= user32util.MouseEventFMove
+	}
+	fmt.Printf("%08s\n", strconv.FormatInt(int64(e.Button), 2))
 	windows.SendMouseInput(int32(e.X), int32(e.Y)*-1, flags)
 }
 
