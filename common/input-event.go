@@ -2,83 +2,70 @@ package common
 
 import (
 	"encoding"
-	"encoding/binary"
 	"fmt"
-	"time"
 )
 
-type InputEventType uint16
+const version byte = 1
+
+type InputEventType byte
 
 const (
-	EV_SYN       = InputEventType(0x00)
-	EV_KEY       = InputEventType(0x01)
-	EV_REL       = InputEventType(0x02)
-	EV_ABS       = InputEventType(0x03)
-	EV_MSC       = InputEventType(0x04)
-	EV_SW        = InputEventType(0x05)
-	EV_LED       = InputEventType(0x11)
-	EV_SND       = InputEventType(0x12)
-	EV_REP       = InputEventType(0x14)
-	EV_FF        = InputEventType(0x15)
-	EV_PWR       = InputEventType(0x16)
-	EV_FF_STATUS = InputEventType(0x17)
-	EV_MAX       = InputEventType(0x1f)
-	EV_CNT       = InputEventType((EV_MAX + 1))
+	TypeKeyboard = InputEventType(0)
+	TypeMouse    = InputEventType(1)
 )
 
-func (t InputEventType) String() string {
-	switch t {
-	case EV_SYN:
-		return "EV_SYN"
-	case EV_KEY:
-		return "EV_KEY"
-	case EV_REL:
-		return "EV_REL"
-	case EV_ABS:
-		return "EV_ABS"
-	case EV_MSC:
-		return "EV_MSC"
-	case EV_SW:
-		return "EV_SW"
-	case EV_LED:
-		return "EV_LED"
-	case EV_SND:
-		return "EV_SND"
-	case EV_REP:
-		return "EV_REP"
-	case EV_FF:
-		return "EV_FF"
-	case EV_PWR:
-		return "EV_PWR"
-	case EV_FF_STATUS:
-		return "EV_FF_"
-	case EV_MAX:
-		return "EV_MAX"
-	case EV_CNT:
-		return "EV_CNT"
-	}
-	return fmt.Sprintf("unknown %d", t)
-}
-
 type InputEvent struct {
-	Time      time.Time
-	EventType InputEventType
-	Code      KeyCode
-	Value     int32
+	Mouse    *MouseInputEvent
+	Keyboard *KeyboardInputEvent
 }
 
 var _ encoding.BinaryUnmarshaler = (*InputEvent)(nil)
+var _ encoding.BinaryMarshaler = (*InputEvent)(nil)
 
-func (e *InputEvent) UnmarshalBinary(b []byte) error {
-	if len(b) != 24 {
-		return fmt.Errorf("invalid length")
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (i *InputEvent) MarshalBinary() ([]byte, error) {
+	data := make([]byte, 32)
+	data[0] = version
+
+	if (i.Keyboard == nil) == (i.Mouse == nil) {
+		return nil, fmt.Errorf("exactly one of .Mouse or .Keyboard must be set")
 	}
-	sec := binary.LittleEndian.Uint64(b[0:8])
-	usec := binary.LittleEndian.Uint64(b[8:16])
-	e.Time = time.Unix(int64(sec), int64(usec))
 
-	e.EventType = InputEventType(binary.LittleEndian.Uint16(b[16:18]))
-	e.Code = KeyCode(binary.LittleEndian.Uint16(b[18:20]))
-	e.Value = int32(binary.LittleEndian.Uint32(b[20:]))
-	return nil
+	var v encoding.BinaryMarshaler
+	if i.Keyboard != nil {
+		data[1] = byte(TypeKeyboard)
+		v = i.Keyboard
+	} else if i.Mouse != nil {
+		data[1] = byte(TypeMouse)
+		v = i.Mouse
+	}
+
+	b, err := v.MarshalBinary()
+	if err != nil {
+		return nil, err
+	}
+	copy(data[2:2+len(b)], b)
+
+	return data, nil
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (i *InputEvent) UnmarshalBinary(data []byte) error {
+	v := data[0]
+	if v != version {
+		return fmt.Errorf("invalid version %d expected %d", v, version)
+	}
+
+	typ := data[1]
+
+	switch InputEventType(typ) {
+	case TypeKeyboard:
+		i.Keyboard = &KeyboardInputEvent{}
+		return i.Keyboard.UnmarshalBinary(data[2:26])
+	case TypeMouse:
+		i.Mouse = &MouseInputEvent{}
+		return i.Mouse.UnmarshalBinary(data[2:5])
+	default:
+		return fmt.Errorf("unexpected type %d", typ)
+	}
 }

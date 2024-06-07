@@ -6,6 +6,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"strings"
 	"sync"
 
 	"github.com/abibby/remote-input/common"
@@ -99,7 +100,10 @@ func (m *ConnMux) remove(conn net.Conn) error {
 var _ io.WriteCloser = (*ConnMux)(nil)
 
 func main() {
-	dev := "/dev/input/by-id/usb-Generic_USB_Keyboard-event-kbd"
+	devices := []string{
+		"/dev/input/by-id/usb-Generic_USB_Keyboard-event-kbd",
+		"/dev/input/mice",
+	}
 
 	listener, err := net.Listen("tcp", ":38808")
 	if err != nil {
@@ -112,7 +116,15 @@ func main() {
 	mux := NewConnMux()
 	defer mux.Close()
 
-	go readDevice(dev, mux)
+	for _, device := range devices {
+		if strings.HasSuffix(device, "-kbd") {
+			go readDevice(device, mux, &common.KeyboardInputEvent{})
+		} else if strings.HasSuffix(device, "-mouse") || device == "/dev/input/mice" {
+			go readDevice(device, mux, &common.MouseInputEvent{})
+		} else {
+			log.Printf("unknown device %s", device)
+		}
+	}
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
@@ -123,7 +135,7 @@ func main() {
 	}
 }
 
-func readDevice(devicePath string, mux *ConnMux) {
+func readDevice[T common.Event](devicePath string, w io.Writer, e T) {
 	// serverIP := "localhost:38808"
 
 	f, err := os.Open(devicePath)
@@ -134,39 +146,28 @@ func readDevice(devicePath string, mux *ConnMux) {
 
 	log.Printf("connected to %s", devicePath)
 
-	b := make([]byte, 24)
+	b := make([]byte, e.Size())
 	for {
 		_, err = f.Read(b)
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		_, err = mux.Write(b)
+		err = e.UnmarshalBinary(b)
 		if err != nil {
 			log.Print(err)
 			continue
 		}
-	}
-}
-
-func serve(conn net.Conn) {
-	defer conn.Close()
-
-	var err error
-	b := make([]byte, 24)
-	for {
-		_, err = conn.Read(b)
+		// fmt.Printf("%#v\n", e)
+		out, err := e.InputEvent().MarshalBinary()
 		if err != nil {
-			log.Fatal(err)
+			log.Print(err)
+			continue
 		}
-
-		e := &common.InputEvent{}
-
-		err = e.UnmarshalBinary(b)
+		_, err = w.Write(out)
 		if err != nil {
-			log.Fatal(err)
+			log.Print(err)
+			continue
 		}
-
-		log.Printf("%v\n", e)
 	}
 }
