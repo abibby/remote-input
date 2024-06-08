@@ -5,7 +5,6 @@ import (
 	"io"
 	"log"
 	"net"
-	"time"
 
 	"github.com/abibby/remote-input/common"
 	"github.com/abibby/remote-input/windows"
@@ -14,6 +13,8 @@ import (
 func main() {
 	log.Printf("started")
 
+	// serverIP := os.Getenv("REMOTE_INPUT_HOST")
+	// serverIP := "192.168.2.54:38808"
 	serverIP := "192.168.2.38:38808"
 	// serverIP := "localhost:38808"
 
@@ -48,6 +49,8 @@ func main() {
 			err = handleKey(e)
 		case common.EV_REL:
 			err = handleRel(e)
+		default:
+			log.Printf("unhandled event type %v\n", e.EventType)
 		}
 		if err != nil {
 			log.Print(err)
@@ -57,14 +60,7 @@ func main() {
 
 }
 
-var lastMouseTime time.Time
-
 func handleRel(e *common.InputEvent) error {
-	if !lastMouseTime.Equal(e.Time) {
-		lastMouseTime = e.Time
-
-		fmt.Println()
-	}
 	var flags uint32
 	var data int32
 	var dx int32
@@ -78,18 +74,40 @@ func handleRel(e *common.InputEvent) error {
 		flags |= MouseEventFMove
 	case 11:
 		data = e.Value
-		flags |= MouseEventFHWheel
+		flags |= MouseEventFWheel
 	default:
-		fmt.Printf("% 4d % 4d\n", e.Code, e.Value)
+		// fmt.Printf("% 4d % 4d\n", e.Code, e.Value)
+		return nil
 	}
-	return windows.SendMouseInput(dx, dy*-1, data, flags)
+	return windows.SendMouseInput(dx, dy, data, flags)
 }
 
 func handleKey(e *common.InputEvent) error {
+	// Mouse
+	if e.Code > 255 {
+		var flags uint32
+		switch e.Code {
+		case common.MOUSE_LEFT:
+			if e.Value == 1 {
+				flags |= MouseEventFLeftDown
+			} else if e.Value == 0 {
+				flags |= MouseEventFLeftUp
+			}
+		case common.MOUSE_RIGHT:
+			if e.Value == 1 {
+				flags |= MouseEventFRightDown
+			} else if e.Value == 0 {
+				flags |= MouseEventFRightUp
+			}
+		}
+		return windows.SendMouseInput(0, 0, 0, flags)
+	}
+
 	vKey, ok := keyMap[e.Code]
 	if !ok {
 		return fmt.Errorf("no map for key code %d", e.Code)
 	}
+
 	var flag windows.KeyEventFlag
 	if e.Value == 1 {
 		flag = windows.KEYEVENTF_KEYPRESS
