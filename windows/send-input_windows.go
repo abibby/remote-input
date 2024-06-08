@@ -19,11 +19,12 @@ func init() {
 	}
 }
 
-func SendMouseInput(dx, dy int32, flags uint32) error {
+func SendMouseInput(dx, dy int32, data int32, flags uint32) error {
 	return user32util.SendMouseInput(user32util.MouseInput{
-		Dx:      dx,
-		Dy:      dy,
-		DwFlags: flags,
+		Dx:        dx,
+		Dy:        dy,
+		MouseData: uint32(data),
+		DwFlags:   flags,
 	}, user32)
 }
 

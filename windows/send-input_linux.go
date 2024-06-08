@@ -1,6 +1,9 @@
 package windows
 
-import "log"
+import (
+	"log"
+	"strconv"
+)
 
 func SendInput(key VirtualKey, flag KeyEventFlag) error {
 	type keyboardInput struct {
@@ -25,5 +28,10 @@ func SendInput(key VirtualKey, flag KeyEventFlag) error {
 		},
 	}
 	log.Printf("SendInput(%#v)\n", i)
+	return nil
+}
+
+func SendMouseInput(dx, dy int32, data int32, flags uint32) error {
+	log.Printf("SendInput(%#v, %#v, %#v, %032s)\n", dx, dy, data, strconv.FormatUint(uint64(flags), 2))
 	return nil
 }

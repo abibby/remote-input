@@ -102,7 +102,9 @@ var _ io.WriteCloser = (*ConnMux)(nil)
 func main() {
 	devices := []string{
 		"/dev/input/by-id/usb-Generic_USB_Keyboard-event-kbd",
-		"/dev/input/mice",
+		// "/dev/input/by-id/usb-Logitech_G700s_Rechargeable_Gaming_Mouse_F62290ED0007-mouse",
+		"/dev/input/by-id/usb-Logitech_G700s_Rechargeable_Gaming_Mouse_F62290ED0007-event-mouse",
+		// "/dev/input/mice",
 	}
 
 	listener, err := net.Listen("tcp", ":38808")
@@ -117,10 +119,8 @@ func main() {
 	defer mux.Close()
 
 	for _, device := range devices {
-		if strings.HasSuffix(device, "-kbd") {
-			go readDevice(device, mux, &common.KeyboardInputEvent{})
-		} else if device == "/dev/input/mice" {
-			go readDevice(device, mux, &common.MouseInputEvent{})
+		if strings.HasSuffix(device, "-kbd") || strings.HasSuffix(device, "-event-mouse") {
+			go readDevice(device, mux)
 		} else {
 			log.Printf("unknown device %s", device)
 		}
@@ -135,7 +135,7 @@ func main() {
 	}
 }
 
-func readDevice[T common.Event](devicePath string, w io.Writer, e T) {
+func readDevice(devicePath string, w io.Writer) {
 	f, err := os.Open(devicePath)
 	if err != nil {
 		log.Fatal(err)
@@ -144,6 +144,7 @@ func readDevice[T common.Event](devicePath string, w io.Writer, e T) {
 
 	log.Printf("connected to %s", devicePath)
 
+	e := common.InputEvent{}
 	b := make([]byte, e.Size())
 	for {
 		_, err = f.Read(b)
@@ -157,7 +158,7 @@ func readDevice[T common.Event](devicePath string, w io.Writer, e T) {
 			continue
 		}
 
-		out, err := e.InputEvent().MarshalBinary()
+		out, err := e.MarshalBinary()
 		if err != nil {
 			log.Print(err)
 			continue

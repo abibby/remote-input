@@ -5,7 +5,7 @@ import (
 	"github.com/abibby/remote-input/windows"
 )
 
-var keyMap = map[common.KeyCode]windows.VirtualKey{
+var keyMap = map[common.InputEventCode]windows.VirtualKey{
 	common.KEY_BACKSPACE:  windows.VK_BACK,
 	common.KEY_ENTER:      windows.VK_RETURN,
 	common.KEY_TAB:        windows.VK_TAB,
@@ -129,4 +129,10 @@ var keyMap = map[common.KeyCode]windows.VirtualKey{
 	common.KEY_F22: windows.VK_F22,
 	common.KEY_F23: windows.VK_F23,
 	common.KEY_F24: windows.VK_F24,
+
+	common.MOUSE_LEFT:   windows.VK_LBUTTON,
+	common.MOUSE_RIGHT:  windows.VK_RBUTTON,
+	common.MOUSE_MIDDLE: windows.VK_MBUTTON,
+	// common.MOUSE_FORWARD: windows.VK_MBUTTON,
+	// common.MOUSE_BACL:    windows.VK_MBUTTON,
 }

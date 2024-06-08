@@ -5,11 +5,10 @@ import (
 	"io"
 	"log"
 	"net"
-	"strconv"
+	"time"
 
 	"github.com/abibby/remote-input/common"
 	"github.com/abibby/remote-input/windows"
-	"github.com/stephen-fox/user32util"
 )
 
 func main() {
@@ -26,8 +25,7 @@ func main() {
 
 	log.Printf("connected to %s", serverIP)
 
-	lastMouseEvent := &common.MouseInputEvent{}
-	b := make([]byte, 32)
+	b := make([]byte, 24)
 	for {
 		e := &common.InputEvent{}
 		_, err := conn.Read(b)
@@ -45,48 +43,52 @@ func main() {
 			continue
 		}
 
-		if e.Keyboard != nil {
-			handleKeyboard(e.Keyboard)
-		} else if e.Mouse != nil {
-			handleMouse(e.Mouse, lastMouseEvent)
-			lastMouseEvent = e.Mouse
+		switch e.EventType {
+		case common.EV_KEY:
+			err = handleKey(e)
+		case common.EV_REL:
+			err = handleRel(e)
 		}
-
+		if err != nil {
+			log.Print(err)
+			continue
+		}
 	}
 
 }
 
-func handleMouse(e *common.MouseInputEvent, last *common.MouseInputEvent) {
+var lastMouseTime time.Time
+
+func handleRel(e *common.InputEvent) error {
+	if !lastMouseTime.Equal(e.Time) {
+		lastMouseTime = e.Time
+
+		fmt.Println()
+	}
 	var flags uint32
-	if e.ButtonLeft() && !last.ButtonLeft() {
-		flags |= user32util.MouseEventFLeftDown
+	var data int32
+	var dx int32
+	var dy int32
+	switch e.Code {
+	case 0:
+		dx = e.Value
+		flags |= MouseEventFMove
+	case 1:
+		dy = e.Value
+		flags |= MouseEventFMove
+	case 11:
+		data = e.Value
+		flags |= MouseEventFHWheel
+	default:
+		fmt.Printf("% 4d % 4d\n", e.Code, e.Value)
 	}
-	if !e.ButtonLeft() && last.ButtonLeft() {
-		flags |= user32util.MouseEventFLeftUp
-	}
-	if e.ButtonRight() && !last.ButtonRight() {
-		flags |= user32util.MouseEventFRightDown
-	}
-	if !e.ButtonRight() && last.ButtonRight() {
-		flags |= user32util.MouseEventFRightUp
-	}
-
-	if e.X != 0 || e.Y != 0 {
-		flags |= user32util.MouseEventFMove
-	}
-	fmt.Printf("%08s\n", strconv.FormatInt(int64(e.Button), 2))
-	windows.SendMouseInput(int32(e.X), int32(e.Y)*-1, flags)
+	return windows.SendMouseInput(dx, dy*-1, data, flags)
 }
 
-func handleKeyboard(e *common.KeyboardInputEvent) {
-	if e.EventType != common.EV_KEY {
-		return
-	}
-
+func handleKey(e *common.InputEvent) error {
 	vKey, ok := keyMap[e.Code]
 	if !ok {
-		log.Printf("no map for key code %d", e.Code)
-		return
+		return fmt.Errorf("no map for key code %d", e.Code)
 	}
 	var flag windows.KeyEventFlag
 	if e.Value == 1 {
@@ -94,10 +96,5 @@ func handleKeyboard(e *common.KeyboardInputEvent) {
 	} else if e.Value == 0 {
 		flag = windows.KEYEVENTF_KEYUP
 	}
-	err := windows.SendInput(vKey, flag)
-	if err != nil {
-		log.Printf("failed to send input %v", err)
-		return
-	}
-
+	return windows.SendInput(vKey, flag)
 }
