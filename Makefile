@@ -1,5 +1,5 @@
 GO_VERSION := go1.22.4
-ifeq ($(OS), Windows_NT)
+ifeq (, $(shell which $(GO_VERSION)))
 	GC := go
 else
 	GC := ~/go/bin/$(GO_VERSION)
