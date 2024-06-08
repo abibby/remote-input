@@ -89,7 +89,8 @@ func readDevice(devicePath string, w io.Writer) error {
 		}
 		_, err = w.Write(out)
 		if err != nil {
-			return err
+			log.Print(err)
+			continue
 		}
 	}
 }

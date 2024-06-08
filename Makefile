@@ -1,8 +1,10 @@
 GO_VERSION := go1.22.4
-ifeq (, $(shell which $(GO_VERSION)))
-	GC := go
+GO_PATH := ~/go/bin/$(GO_VERSION)
+
+ifeq ($(shell test -s $(GO_PATH) && echo -n yes), yes)
+	GC := $(GO_PATH)
 else
-	GC := ~/go/bin/$(GO_VERSION)
+	GC := go
 endif
 
 all: bin/client bin/server
