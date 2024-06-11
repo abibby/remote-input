@@ -1,10 +1,10 @@
 GO_VERSION := go1.22.4
 GO_PATH := ~/go/bin/$(GO_VERSION)
 
-ifeq ($(shell test -s $(GO_PATH) && echo -n yes), yes)
-	GC := $(GO_PATH)
-else
+ifeq ("$(wildcard $(GO_PATH))", "")
 	GC := go
+else
+	GC := $(GO_PATH)
 endif
 
 all: bin/client bin/server

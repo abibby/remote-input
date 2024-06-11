@@ -85,6 +85,7 @@ func handleJoystick(events []common.InputEvent, index uint16) error {
 				keyboardEvents = append(keyboardEvents, e)
 			} else {
 				buttonID := e.Code - common.JOYSTICK_BASE
+				log.Printf("gamepad button %d\n", buttonID)
 			}
 		}
 	}
