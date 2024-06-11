@@ -119,30 +119,36 @@ func handleJoystick(events []common.InputEvent, index uint16) error {
 		return err
 	}
 	report := controller.State()
+	// report := vigem.NewXbox360ControllerReport()
 	for _, e := range events {
-		log.Printf("%v: %x %x\n", e.EventType, e.Code, e.Value)
 		switch e.EventType {
 		case common.EV_ABS:
 		case common.EV_KEY:
 			if e.Code < uint16(len(keyMap)) {
 				keyboardEvents = append(keyboardEvents, e)
 			} else {
+				log.Printf("%v: %x %x\n", e.EventType, e.Code, e.Value)
 				buttonID := e.Code - common.JOYSTICK_BASE
 				log.Printf("gamepad button %d\n", buttonID)
+				if int(buttonID) > len(gamepadMap) {
+					continue
+				}
 				btn := gamepadMap[buttonID]
 				if btn == -1 {
 					continue
 				}
-				if e.Value == 0 {
+				switch e.Value {
+				case 0:
 					report.ClearButton(btn)
-				} else if e.Value == 0 {
+				case 1:
 					report.SetButton(btn)
 				}
 			}
 		}
 	}
+	// log.Print(report)
 	controller.Send(report)
-	fmt.Println()
+	// fmt.Println()
 	return nil
 }
 func handleMouse(events []common.InputEvent) error {
