@@ -290,17 +290,27 @@ func (r *Xbox360ControllerReport) SetRightTrigger(value byte) {
 func (r *Xbox360ControllerReport) GetLeftThumb() (x, y int16) {
 	return int16(r.native.sThumbLX), int16(r.native.sThumbLY)
 }
-
 func (r *Xbox360ControllerReport) SetLeftThumb(x, y int16) {
+	r.SetLeftThumbX(x)
+	r.SetLeftThumbY(y)
+}
+func (r *Xbox360ControllerReport) SetLeftThumbX(x int16) {
 	r.native.sThumbLX = int16(x)
+}
+func (r *Xbox360ControllerReport) SetLeftThumbY(y int16) {
 	r.native.sThumbLY = int16(y)
 }
-
 func (r *Xbox360ControllerReport) GetRightThumb() (x, y int16) {
 	return int16(r.native.sThumbRX), int16(r.native.sThumbRY)
 }
 
 func (r *Xbox360ControllerReport) SetRightThumb(x, y int16) {
+	r.SetRightThumbX(x)
+	r.SetRightThumbY(y)
+}
+func (r *Xbox360ControllerReport) SetRightThumbX(x int16) {
 	r.native.sThumbRX = int16(x)
+}
+func (r *Xbox360ControllerReport) SetRightThumbY(y int16) {
 	r.native.sThumbRY = int16(y)
 }

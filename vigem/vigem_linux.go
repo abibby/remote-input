@@ -17,7 +17,7 @@ func newProc(name string) *lazyProc {
 
 func (p *lazyProc) Call(a ...uintptr) (r1, r2 uintptr, lastErr error) {
 	log.Printf("%s.Call(%v)", p.Name, a)
-	return 0, 0, windowsERROR_SUCCESS
+	return VIGEM_ERROR_NONE, 0, windowsERROR_SUCCESS
 }
 
 var (
