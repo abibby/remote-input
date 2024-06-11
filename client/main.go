@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -36,9 +37,27 @@ func (j *Joysticks) Get(index uint16) (*vigem.Xbox360Controller, error) {
 		if err != nil {
 			return nil, err
 		}
+		err = e.Connect()
+		if err != nil {
+			return nil, err
+		}
 		j.controllers[index] = e
 	}
 	return e, nil
+}
+
+func (j *Joysticks) Close() error {
+	errs := []error{}
+	for _, c := range j.controllers {
+		err := c.Close()
+		if err != nil {
+			errs = append(errs, err)
+		}
+	}
+	if len(errs) > 0 {
+		return errors.Join(errs...)
+	}
+	return nil
 }
 
 var joysticks *Joysticks
@@ -57,8 +76,8 @@ func main() {
 	joysticks, err = NewJoysticks()
 	if err != nil {
 		log.Printf("Joystick setup failed: %v", err)
-
 	}
+	defer joysticks.Close()
 
 	log.Printf("connected to %s", serverIP)
 
