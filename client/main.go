@@ -48,6 +48,7 @@ func (j *Joysticks) Get(index uint16) (*vigem.Xbox360Controller, error) {
 
 func (j *Joysticks) Close() error {
 	errs := []error{}
+
 	for _, c := range j.controllers {
 		err := c.Close()
 		if err != nil {
@@ -132,7 +133,7 @@ func handleEvent(events []common.InputEvent) error {
 
 func handleJoystick(events []common.InputEvent, index uint16) error {
 	keyboardEvents := []common.InputEvent{}
-
+	// spew.Dump(events)
 	controller, err := joysticks.Get(index)
 	if err != nil {
 		return err
@@ -142,6 +143,42 @@ func handleJoystick(events []common.InputEvent, index uint16) error {
 	for _, e := range events {
 		switch e.EventType {
 		case common.EV_ABS:
+			switch e.Code {
+			case 0:
+				report.SetLeftThumbX(int16(e.Value))
+			case 1:
+				report.SetLeftThumbY(int16(e.Value))
+			case 2:
+				report.SetLeftTrigger(byte(e.Value))
+			case 3:
+				report.SetRightThumbX(int16(e.Value))
+			case 4:
+				report.SetRightThumbY(int16(e.Value))
+			case 5:
+				report.SetRightTrigger(byte(e.Value))
+			case 16:
+				switch e.Value {
+				case -1:
+					report.SetButton(vigem.Xbox360ControllerButtonLeft)
+				case 0:
+					report.ClearButton(vigem.Xbox360ControllerButtonLeft)
+					report.ClearButton(vigem.Xbox360ControllerButtonRight)
+				case 1:
+					report.SetButton(vigem.Xbox360ControllerButtonRight)
+				}
+			case 17:
+				switch e.Value {
+				case -1:
+					report.SetButton(vigem.Xbox360ControllerButtonUp)
+				case 0:
+					report.ClearButton(vigem.Xbox360ControllerButtonUp)
+					report.ClearButton(vigem.Xbox360ControllerButtonDown)
+				case 1:
+					report.SetButton(vigem.Xbox360ControllerButtonDown)
+				}
+			default:
+				log.Printf("%v %v", e.Code, e.Value)
+			}
 		case common.EV_KEY:
 			if e.Code < uint16(len(keyMap)) {
 				keyboardEvents = append(keyboardEvents, e)
@@ -149,13 +186,11 @@ func handleJoystick(events []common.InputEvent, index uint16) error {
 				log.Printf("%v: %x %x\n", e.EventType, e.Code, e.Value)
 				buttonID := e.Code - common.JOYSTICK_BASE
 				log.Printf("gamepad button %d\n", buttonID)
-				if int(buttonID) > len(gamepadMap) {
+				if int(buttonID) > len(gamepadMap) || gamepadMap[buttonID] == -1 {
+					log.Printf("no mapping for button %d", buttonID)
 					continue
 				}
 				btn := gamepadMap[buttonID]
-				if btn == -1 {
-					continue
-				}
 				switch e.Value {
 				case 0:
 					report.ClearButton(btn)
@@ -165,10 +200,12 @@ func handleJoystick(events []common.InputEvent, index uint16) error {
 			}
 		}
 	}
-	// log.Print(report)
-	controller.Send(report)
-	// fmt.Println()
-	return nil
+
+	err = handleKeyboard(keyboardEvents)
+	if err != nil {
+		return err
+	}
+	return controller.Send(report)
 }
 func handleMouse(events []common.InputEvent) error {
 	var flags uint32
