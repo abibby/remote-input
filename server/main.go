@@ -1,36 +1,77 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"log"
 	"net"
 	"os"
 	"path"
+	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/abibby/remote-input/common"
+	"github.com/abibby/remote-input/config"
 )
 
-var enabledEventTypes = [0x1f]bool{
-	common.EV_KEY: true,
-	common.EV_REL: true,
-	common.EV_ABS: true,
+// var enabledEventTypes = [0x1f]bool{
+// 	common.EV_KEY: true,
+// 	common.EV_REL: true,
+// 	common.EV_ABS: true,
+// }
+
+type Device struct {
+	Name  string
+	Path  string
+	Index uint16
+	Type  int32
 }
 
-func main() {
+const eventPathBase = "/dev/input/event"
+const dirById = "/dev/input/by-id"
 
-	dirById := "/dev/input/by-id"
+func main() {
 	devicesById, err := os.ReadDir(dirById)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	devices := []string{}
+	devices := []*Device{}
 	for _, f := range devicesById {
-		devices = append(devices, path.Join(dirById, f.Name()))
+		p, err := filepath.EvalSymlinks(path.Join(dirById, f.Name()))
+		if err != nil {
+			log.Print(err)
+			continue
+		}
+
+		if !strings.HasPrefix(p, eventPathBase) {
+			continue
+		}
+
+		strIndex := p[len(eventPathBase):]
+		index, err := strconv.Atoi(strIndex)
+		if err != nil {
+			log.Print(err)
+			continue
+		}
+		deviceType := int32(-1)
+		if strings.HasSuffix(f.Name(), "-kbd") {
+			deviceType = common.DeviceTypeKeyboard
+		} else if strings.HasSuffix(f.Name(), "-event-mouse") {
+			deviceType = common.DeviceTypeMouse
+		} else if strings.HasSuffix(f.Name(), "-event-joystick") {
+			deviceType = common.DeviceTypeJoystick
+		}
+		devices = append(devices, &Device{
+			Name:  f.Name(),
+			Path:  p,
+			Index: uint16(index),
+			Type:  deviceType,
+		})
 	}
 
-	listener, err := net.Listen("tcp", ":38808")
+	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", config.Port))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -42,11 +83,11 @@ func main() {
 	defer mux.Close()
 
 	for _, device := range devices {
-		if strings.HasSuffix(device, "-kbd") || strings.HasSuffix(device, "-event-mouse") || strings.HasSuffix(device, "-event-joystick") {
-			go func(device string) {
+		if device.Type != -1 {
+			go func(device *Device) {
 				err = readDevice(device, mux)
 				if err != nil {
-					log.Printf("device %s failed: %v", device, err)
+					log.Printf("device %s failed: %v", device.Name, err)
 				}
 			}(device)
 		}
@@ -61,16 +102,17 @@ func main() {
 	}
 }
 
-func readDevice(devicePath string, w io.Writer) error {
-	f, err := os.Open(devicePath)
+func readDevice(device *Device, w io.Writer) error {
+	f, err := os.Open(device.Path)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
 
-	log.Printf("connected to %s", devicePath)
+	log.Printf("connected to %s", device.Name)
 
 	e := common.InputEvent{}
+	outBuffer := make([]byte, 0, e.Size()*8)
 	b := make([]byte, e.Size())
 	for {
 		_, err = f.Read(b)
@@ -84,20 +126,27 @@ func readDevice(devicePath string, w io.Writer) error {
 			continue
 		}
 
-		if !enabledEventTypes[e.EventType] {
-			continue
+		// if !enabledEventTypes[e.EventType] {
+		// 	continue
+		// }
+		if e.EventType == common.EV_SYN {
+			e.Code = device.Index
+			e.Value = device.Type
 		}
 		// spew.Dump(e)
-
 		out, err := e.MarshalBinary()
 		if err != nil {
 			log.Print(err)
 			continue
 		}
-		_, err = w.Write(out)
-		if err != nil {
-			log.Print(err)
-			continue
+		outBuffer = append(outBuffer, out...)
+		if e.EventType == common.EV_SYN {
+			_, err = w.Write(outBuffer)
+			if err != nil {
+				log.Print(err)
+				continue
+			}
+			outBuffer = outBuffer[:0]
 		}
 	}
 }

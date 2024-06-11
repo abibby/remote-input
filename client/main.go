@@ -7,16 +7,14 @@ import (
 	"net"
 
 	"github.com/abibby/remote-input/common"
+	"github.com/abibby/remote-input/config"
 	"github.com/abibby/remote-input/windows"
 )
 
 func main() {
 	log.Printf("started")
 
-	// serverIP := os.Getenv("REMOTE_INPUT_HOST")
-	// serverIP := "192.168.2.54:38808"
-	// serverIP := "192.168.2.38:38808"
-	serverIP := "localhost:38808"
+	serverIP := fmt.Sprintf("%s:%d", config.Host, config.Port)
 
 	conn, err := net.Dial("tcp", serverIP)
 	if err != nil {
@@ -26,9 +24,13 @@ func main() {
 
 	log.Printf("connected to %s", serverIP)
 
+	events := make([]common.InputEvent, 0, 8)
+
 	b := make([]byte, 24)
 	for {
-		e := &common.InputEvent{}
+		events = append(events, common.InputEvent{})
+		e := &events[len(events)-1]
+
 		_, err := conn.Read(b)
 		if err == io.EOF {
 			log.Print("disconnected")
@@ -44,85 +46,108 @@ func main() {
 			continue
 		}
 
-		switch e.EventType {
-		case common.EV_KEY:
-			err = handleKey(e)
-		case common.EV_REL:
-			err = handleRel(e)
-		case common.EV_ABS:
-			err = handleAbs(e)
-		default:
-			log.Printf("unhandled event type %v\n", e.EventType)
-		}
-		if err != nil {
-			log.Print(err)
-			continue
+		if e.EventType == common.EV_SYN {
+			err = handleEvent(events)
+			if err != nil {
+				log.Print(err)
+			}
+			events = events[:0]
 		}
 	}
 
 }
 
-func handleAbs(e *common.InputEvent) error {
+func handleEvent(events []common.InputEvent) error {
+	syn := events[len(events)-1]
+	rest := events[:len(events)-1]
+	// if syn.Value == common.DeviceTypeKeyboard {
+	// 	return handleKeyboard(rest)
+	// }
+	// if syn.Value == common.DeviceTypeMouse {
+	// 	return handleMouse(rest)
+	// }
+	if syn.Value == common.DeviceTypeJoystick {
+		return handleJoystick(rest, syn.Code)
+	}
+
 	return nil
 }
-func handleRel(e *common.InputEvent) error {
+
+func handleJoystick(events []common.InputEvent, index uint16) error {
+	keyboardEvents := []common.InputEvent{}
+
+	for _, e := range events {
+		log.Printf("%v: %x %x\n", e.EventType, e.Code, e.Value)
+		switch e.EventType {
+		case common.EV_ABS:
+		case common.EV_KEY:
+			if e.Code < uint16(len(keyMap)) {
+				keyboardEvents = append(keyboardEvents, e)
+			} else {
+				buttonID := e.Code - common.JOYSTICK_BASE
+			}
+		}
+	}
+	fmt.Println()
+	return nil
+}
+func handleMouse(events []common.InputEvent) error {
 	var flags uint32
 	var data int32
 	var dx int32
 	var dy int32
-	switch e.Code {
-	case 0:
-		dx = e.Value
-		flags |= MouseEventFMove
-	case 1:
-		dy = e.Value
-		flags |= MouseEventFMove
-	case 11:
-		data = e.Value
-		flags |= MouseEventFWheel
-	default:
-		// fmt.Printf("% 4d % 4d\n", e.Code, e.Value)
-		return nil
+	for _, e := range events {
+		switch e.EventType {
+		case common.EV_REL:
+			switch e.Code {
+			case 0:
+				dx = e.Value
+				flags |= MouseEventFMove
+			case 1:
+				dy = e.Value
+				flags |= MouseEventFMove
+			case 11:
+				data = e.Value
+				flags |= MouseEventFWheel
+			}
+		case common.EV_KEY:
+			switch e.Code {
+			case common.MOUSE_LEFT:
+				if e.Value == 1 {
+					flags |= MouseEventFLeftDown
+				} else if e.Value == 0 {
+					flags |= MouseEventFLeftUp
+				}
+			case common.MOUSE_RIGHT:
+				if e.Value == 1 {
+					flags |= MouseEventFRightDown
+				} else if e.Value == 0 {
+					flags |= MouseEventFRightUp
+				}
+			}
+		}
 	}
 	return windows.SendMouseInput(dx, dy, data, flags)
 }
-
-func handleKey(e *common.InputEvent) error {
-	if e.Code >= common.JOYSTICK_BASE {
-		// Joystick
-		buttonNum := e.Code - common.JOYSTICK_BASE
-		log.Printf("joystick button %d", buttonNum)
-		return nil
-	} else if e.Code > uint16(len(keyMap)) {
-		// Mouse
-		var flags uint32
-		switch e.Code {
-		case common.MOUSE_LEFT:
-			if e.Value == 1 {
-				flags |= MouseEventFLeftDown
-			} else if e.Value == 0 {
-				flags |= MouseEventFLeftUp
-			}
-		case common.MOUSE_RIGHT:
-			if e.Value == 1 {
-				flags |= MouseEventFRightDown
-			} else if e.Value == 0 {
-				flags |= MouseEventFRightUp
-			}
+func handleKeyboard(events []common.InputEvent) error {
+	for _, e := range events {
+		if e.EventType != common.EV_KEY {
+			continue
 		}
-		return windows.SendMouseInput(0, 0, 0, flags)
-	}
+		vKey := keyMap[e.Code]
+		if vKey == 0 {
+			return fmt.Errorf("no map for key code %d", e.Code)
+		}
 
-	vKey := keyMap[e.Code]
-	if vKey == 0 {
-		return fmt.Errorf("no map for key code %d", e.Code)
+		var flag windows.KeyEventFlag
+		if e.Value == 0 {
+			flag = windows.KEYEVENTF_KEYUP
+		} else if e.Value == 1 {
+			flag = windows.KEYEVENTF_KEYPRESS
+		} else if e.Value == 2 {
+			flag = windows.KEYEVENTF_KEYPRESS
+		}
+		return windows.SendInput(vKey, flag)
 	}
-
-	var flag windows.KeyEventFlag
-	if e.Value == 1 {
-		flag = windows.KEYEVENTF_KEYPRESS
-	} else if e.Value == 0 {
-		flag = windows.KEYEVENTF_KEYUP
-	}
-	return windows.SendInput(vKey, flag)
+	return nil
 }
