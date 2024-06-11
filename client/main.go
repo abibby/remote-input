@@ -30,7 +30,7 @@ func NewJoysticks() (*Joysticks, error) {
 	}, nil
 }
 
-func (j *Joysticks) Get(index uint16) (*vigem.Xbox360Controller, error) {
+func (j *Joysticks) Connect(index uint16) (*vigem.Xbox360Controller, error) {
 	var err error
 	e, ok := j.controllers[index]
 	if !ok {
@@ -45,6 +45,22 @@ func (j *Joysticks) Get(index uint16) (*vigem.Xbox360Controller, error) {
 		j.controllers[index] = e
 	}
 	return e, nil
+}
+func (j *Joysticks) Disconnect(index uint16) error {
+	e, ok := j.controllers[index]
+	if !ok {
+		return nil
+	}
+	err := e.Disconnect()
+	if err != nil {
+		return err
+	}
+	err = e.Close()
+	if err != nil {
+		return err
+	}
+	delete(j.controllers, index)
+	return nil
 }
 
 func (j *Joysticks) Close() error {
@@ -154,7 +170,7 @@ func ui8(v int32) uint8 {
 func handleJoystick(events []common.InputEvent, index uint16) error {
 	keyboardEvents := []common.InputEvent{}
 	// spew.Dump(events)
-	controller, err := joysticks.Get(index)
+	controller, err := joysticks.Connect(index)
 	if err != nil {
 		return err
 	}
