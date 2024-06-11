@@ -5,8 +5,6 @@ package vigem
 import (
 	"errors"
 	"unsafe"
-
-	"golang.org/x/sys/windows"
 )
 
 type xusbReport struct {
@@ -37,22 +35,6 @@ const (
 	VIGEM_ERROR_XUSB_USERINDEX_OUT_OF_RANGE = 0xE0000014
 
 	VIGEM_ERROR_MAX = VIGEM_ERROR_XUSB_USERINDEX_OUT_OF_RANGE + 1
-)
-
-var (
-	client = windows.NewLazyDLL("ViGEmClient.dll")
-
-	procAlloc                            = client.NewProc("vigem_alloc")
-	procFree                             = client.NewProc("vigem_free")
-	procConnect                          = client.NewProc("vigem_connect")
-	procDisconnect                       = client.NewProc("vigem_disconnect")
-	procTargetAdd                        = client.NewProc("vigem_target_add")
-	procTargetFree                       = client.NewProc("vigem_target_free")
-	procTargetRemove                     = client.NewProc("vigem_target_remove")
-	procTargetX360Alloc                  = client.NewProc("vigem_target_x360_alloc")
-	procTargetX360RegisterNotification   = client.NewProc("vigem_target_x360_register_notification")
-	procTargetX360UnregisterNotification = client.NewProc("vigem_target_x360_unregister_notification")
-	procTargetX360Update                 = client.NewProc("vigem_target_x360_update")
 )
 
 type VigemError struct {
@@ -117,13 +99,13 @@ type Vibration struct {
 func NewEmulator(onVibration func(vibration Vibration)) (*Emulator, error) {
 	handle, _, err := procAlloc.Call()
 
-	if !errors.Is(err, windows.ERROR_SUCCESS) {
+	if !errors.Is(err, windowsERROR_SUCCESS) {
 		return nil, err
 	}
 
 	libErr, _, err := procConnect.Call(handle)
 
-	if !errors.Is(err, windows.ERROR_SUCCESS) {
+	if !errors.Is(err, windowsERROR_SUCCESS) {
 		return nil, err
 	}
 	if err := NewVigemError(libErr); err != nil {
@@ -143,7 +125,7 @@ func (e *Emulator) Close() error {
 func (e *Emulator) CreateXbox360Controller() (*Xbox360Controller, error) {
 	handle, _, err := procTargetX360Alloc.Call()
 
-	if !errors.Is(err, windows.ERROR_SUCCESS) {
+	if !errors.Is(err, windowsERROR_SUCCESS) {
 		return nil, err
 	}
 
@@ -152,9 +134,9 @@ func (e *Emulator) CreateXbox360Controller() (*Xbox360Controller, error) {
 
 		return 0
 	}
-	callback := windows.NewCallback(notificationHandler)
+	callback := windowsNewCallback(notificationHandler)
 
-	return &Xbox360Controller{e, handle, false, callback}, nil
+	return &Xbox360Controller{e, handle, false, callback, &Xbox360ControllerReport{}}, nil
 }
 
 type x360NotificationHandler func(client, target uintptr, largeMotor, smallMotor, ledNumber byte) uintptr
@@ -164,6 +146,7 @@ type Xbox360Controller struct {
 	handle              uintptr
 	connected           bool
 	notificationHandler uintptr
+	state               *Xbox360ControllerReport
 }
 
 func (c *Xbox360Controller) Close() error {
@@ -172,10 +155,14 @@ func (c *Xbox360Controller) Close() error {
 	return err
 }
 
+func (c *Xbox360Controller) State() *Xbox360ControllerReport {
+	return c.state
+}
+
 func (c *Xbox360Controller) Connect() error {
 	libErr, _, err := procTargetAdd.Call(c.emulator.handle, c.handle)
 
-	if !errors.Is(err, windows.ERROR_SUCCESS) {
+	if !errors.Is(err, windowsERROR_SUCCESS) {
 		return err
 	}
 	if err := NewVigemError(libErr); err != nil {
@@ -184,7 +171,7 @@ func (c *Xbox360Controller) Connect() error {
 
 	libErr, _, err = procTargetX360RegisterNotification.Call(c.emulator.handle, c.handle, c.notificationHandler)
 
-	if !errors.Is(err, windows.ERROR_SUCCESS) {
+	if !errors.Is(err, windowsERROR_SUCCESS) {
 		return err
 	}
 	if err := NewVigemError(libErr); err != nil {
@@ -199,7 +186,7 @@ func (c *Xbox360Controller) Connect() error {
 func (c *Xbox360Controller) Disconnect() error {
 	libErr, _, err := procTargetX360UnregisterNotification.Call(c.handle)
 
-	if !errors.Is(err, windows.ERROR_SUCCESS) {
+	if !errors.Is(err, windowsERROR_SUCCESS) {
 		return err
 	}
 	if err := NewVigemError(libErr); err != nil {
@@ -208,7 +195,7 @@ func (c *Xbox360Controller) Disconnect() error {
 
 	libErr, _, err = procTargetRemove.Call(c.emulator.handle, c.handle)
 
-	if !errors.Is(err, windows.ERROR_SUCCESS) {
+	if !errors.Is(err, windowsERROR_SUCCESS) {
 		return err
 	}
 	if err := NewVigemError(libErr); err != nil {
@@ -223,7 +210,7 @@ func (c *Xbox360Controller) Disconnect() error {
 func (c *Xbox360Controller) Send(report *Xbox360ControllerReport) error {
 	libErr, _, err := procTargetX360Update.Call(c.emulator.handle, c.handle, uintptr(unsafe.Pointer(&report.native)))
 
-	if !errors.Is(err, windows.ERROR_SUCCESS) {
+	if !errors.Is(err, windowsERROR_SUCCESS) {
 		return err
 	}
 	if err := NewVigemError(libErr); err != nil {
@@ -278,6 +265,10 @@ func (r *Xbox360ControllerReport) MaybeSetButton(shiftBy int, isSet bool) {
 
 func (r *Xbox360ControllerReport) SetButton(shiftBy int) {
 	r.native.wButtons |= 1 << shiftBy
+}
+
+func (r *Xbox360ControllerReport) ClearButton(shiftBy int) {
+	r.native.wButtons &= ^(1 << shiftBy)
 }
 
 func (r *Xbox360ControllerReport) GetLeftTrigger() byte {

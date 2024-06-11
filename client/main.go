@@ -8,8 +8,40 @@ import (
 
 	"github.com/abibby/remote-input/common"
 	"github.com/abibby/remote-input/config"
+	"github.com/abibby/remote-input/vigem"
 	"github.com/abibby/remote-input/windows"
 )
+
+type Joysticks struct {
+	controllers map[uint16]*vigem.Xbox360Controller
+	emulator    *vigem.Emulator
+}
+
+func NewJoysticks() (*Joysticks, error) {
+	emu, err := vigem.NewEmulator(func(vibration vigem.Vibration) {})
+	if err != nil {
+		return nil, err
+	}
+	return &Joysticks{
+		emulator:    emu,
+		controllers: map[uint16]*vigem.Xbox360Controller{},
+	}, nil
+}
+
+func (j *Joysticks) Get(index uint16) (*vigem.Xbox360Controller, error) {
+	var err error
+	e, ok := j.controllers[index]
+	if !ok {
+		e, err = j.emulator.CreateXbox360Controller()
+		if err != nil {
+			return nil, err
+		}
+		j.controllers[index] = e
+	}
+	return e, nil
+}
+
+var joysticks *Joysticks
 
 func main() {
 	log.Printf("started")
@@ -21,6 +53,12 @@ func main() {
 		log.Fatal(err)
 	}
 	defer conn.Close()
+
+	joysticks, err = NewJoysticks()
+	if err != nil {
+		log.Printf("Joystick setup failed: %v", err)
+
+	}
 
 	log.Printf("connected to %s", serverIP)
 
@@ -76,6 +114,11 @@ func handleEvent(events []common.InputEvent) error {
 func handleJoystick(events []common.InputEvent, index uint16) error {
 	keyboardEvents := []common.InputEvent{}
 
+	controller, err := joysticks.Get(index)
+	if err != nil {
+		return err
+	}
+	report := controller.State()
 	for _, e := range events {
 		log.Printf("%v: %x %x\n", e.EventType, e.Code, e.Value)
 		switch e.EventType {
@@ -86,9 +129,19 @@ func handleJoystick(events []common.InputEvent, index uint16) error {
 			} else {
 				buttonID := e.Code - common.JOYSTICK_BASE
 				log.Printf("gamepad button %d\n", buttonID)
+				btn := gamepadMap[buttonID]
+				if btn == -1 {
+					continue
+				}
+				if e.Value == 0 {
+					report.ClearButton(btn)
+				} else if e.Value == 0 {
+					report.SetButton(btn)
+				}
 			}
 		}
 	}
+	controller.Send(report)
 	fmt.Println()
 	return nil
 }
