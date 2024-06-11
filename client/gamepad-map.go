@@ -15,7 +15,7 @@ var gamepadMap = []int{
 	vigem.Xbox360ControllerButtonRightShoulder, // 7
 	-1,                                      // 8
 	-1,                                      // 9
-	vigem.Xbox360ControllerButtonGuide,      // 10?
+	vigem.Xbox360ControllerButtonBack,       // 10
 	vigem.Xbox360ControllerButtonStart,      // 11
 	-1,                                      // 12
 	vigem.Xbox360ControllerButtonLeftThumb,  // 13

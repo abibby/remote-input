@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math"
 	"net"
 
 	"github.com/abibby/remote-input/common"
@@ -131,6 +132,25 @@ func handleEvent(events []common.InputEvent) error {
 	return nil
 }
 
+func i16(v int32) int16 {
+	if v >= math.MaxInt16-1 {
+		return math.MaxInt16 - 1
+	}
+	if v <= math.MinInt16+1 {
+		return math.MinInt16 + 1
+	}
+	return int16(v)
+}
+func ui8(v int32) uint8 {
+	if v > math.MaxUint8 {
+		return math.MaxUint8
+	}
+	if v < 0 {
+		return 0
+	}
+	return uint8(v)
+}
+
 func handleJoystick(events []common.InputEvent, index uint16) error {
 	keyboardEvents := []common.InputEvent{}
 	// spew.Dump(events)
@@ -145,17 +165,18 @@ func handleJoystick(events []common.InputEvent, index uint16) error {
 		case common.EV_ABS:
 			switch e.Code {
 			case 0:
-				report.SetLeftThumbX(int16(e.Value))
+				report.SetLeftThumbX(i16(e.Value))
 			case 1:
-				report.SetLeftThumbY(int16(e.Value))
+				log.Print(e.Value)
+				report.SetLeftThumbY(-i16(e.Value))
 			case 2:
-				report.SetLeftTrigger(byte(e.Value))
+				report.SetLeftTrigger(ui8(e.Value / (1024 / math.MaxUint8)))
 			case 3:
-				report.SetRightThumbX(int16(e.Value))
+				report.SetRightThumbX(i16(e.Value))
 			case 4:
-				report.SetRightThumbY(int16(e.Value))
+				report.SetRightThumbY(-i16(e.Value))
 			case 5:
-				report.SetRightTrigger(byte(e.Value))
+				report.SetRightTrigger(ui8(e.Value / (1024 / math.MaxUint8)))
 			case 16:
 				switch e.Value {
 				case -1:
