@@ -269,9 +269,11 @@ const (
 
 	KEY_MICMUTE = InputEventCode(248) /* Mute / unmute the microphone */
 
-	MOUSE_LEFT    = InputEventCode(272) /* Mute / unmute the microphone */
-	MOUSE_RIGHT   = InputEventCode(273) /* Mute / unmute the microphone */
-	MOUSE_MIDDLE  = InputEventCode(274) /* Mute / unmute the microphone */
-	MOUSE_BACK    = InputEventCode(275) /* Mute / unmute the microphone */
-	MOUSE_FORWARD = InputEventCode(276) /* Mute / unmute the microphone */
+	MOUSE_LEFT    = InputEventCode(272)
+	MOUSE_RIGHT   = InputEventCode(273)
+	MOUSE_MIDDLE  = InputEventCode(274)
+	MOUSE_BACK    = InputEventCode(275)
+	MOUSE_FORWARD = InputEventCode(276)
+
+	JOYSTICK_BASE = InputEventCode(304) //0x130
 )

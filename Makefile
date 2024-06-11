@@ -19,7 +19,10 @@ bin/client: FORCE bin
 	$(GC) build -o ./bin/client ./client
 
 bin/server: FORCE bin
-	$(GC) build -o ./bin/server ./server 
+	$(GC) build -o ./bin/server ./server
+
+bin/linux-arm64/server: FORCE bin/linux-arm
+	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 $(GC) build -o ./bin/linux-arm64/server ./server 
 
 tidy:
 	$(GC) mod tidy
@@ -30,5 +33,8 @@ install_go:
 
 bin:
 	mkdir bin
+
+bin/linux-arm:
+	mkdir bin/linux-arm
 
 FORCE: ;

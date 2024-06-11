@@ -15,8 +15,8 @@ func main() {
 
 	// serverIP := os.Getenv("REMOTE_INPUT_HOST")
 	// serverIP := "192.168.2.54:38808"
-	serverIP := "192.168.2.38:38808"
-	// serverIP := "localhost:38808"
+	// serverIP := "192.168.2.38:38808"
+	serverIP := "localhost:38808"
 
 	conn, err := net.Dial("tcp", serverIP)
 	if err != nil {
@@ -49,6 +49,8 @@ func main() {
 			err = handleKey(e)
 		case common.EV_REL:
 			err = handleRel(e)
+		case common.EV_ABS:
+			err = handleAbs(e)
 		default:
 			log.Printf("unhandled event type %v\n", e.EventType)
 		}
@@ -60,6 +62,9 @@ func main() {
 
 }
 
+func handleAbs(e *common.InputEvent) error {
+	return nil
+}
 func handleRel(e *common.InputEvent) error {
 	var flags uint32
 	var data int32
@@ -83,8 +88,13 @@ func handleRel(e *common.InputEvent) error {
 }
 
 func handleKey(e *common.InputEvent) error {
-	// Mouse
-	if e.Code > 255 {
+	if e.Code >= common.JOYSTICK_BASE {
+		// Joystick
+		buttonNum := e.Code - common.JOYSTICK_BASE
+		log.Printf("joystick button %d", buttonNum)
+		return nil
+	} else if e.Code > uint16(len(keyMap)) {
+		// Mouse
 		var flags uint32
 		switch e.Code {
 		case common.MOUSE_LEFT:
@@ -103,8 +113,8 @@ func handleKey(e *common.InputEvent) error {
 		return windows.SendMouseInput(0, 0, 0, flags)
 	}
 
-	vKey, ok := keyMap[e.Code]
-	if !ok {
+	vKey := keyMap[e.Code]
+	if vKey == 0 {
 		return fmt.Errorf("no map for key code %d", e.Code)
 	}
 
