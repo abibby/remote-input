@@ -4,7 +4,7 @@ go 1.22
 
 toolchain go1.22.4
 
-replace github.com/abibby/salusa => /home/adam/github.com/abibby/salusa
+// replace github.com/abibby/salusa => /home/adam/github.com/abibby/salusa
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
