@@ -4,7 +4,6 @@ import (
 	"context"
 )
 
-// var ModelRegistrar = modeldi.NewModelRegistrar()
 var registrar = []func(context.Context){}
 
 func Add(register func(context.Context)) {

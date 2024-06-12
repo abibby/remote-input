@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"net"
 	"os"
 	"path"
@@ -13,7 +13,7 @@ import (
 	"strings"
 
 	"github.com/abibby/remote-input/common"
-	"github.com/abibby/remote-input/config"
+	"github.com/abibby/remote-input/server/config"
 	"github.com/abibby/salusa/kernel"
 )
 
@@ -34,6 +34,8 @@ const eventPathBase = "/dev/input/event"
 const dirById = "/dev/input/by-id"
 
 type HIDServer struct {
+	Cfg *config.Config `inject:""`
+	Log *slog.Logger   `inject:""`
 }
 
 func NewHIDServer() *HIDServer {
@@ -57,7 +59,7 @@ func (h *HIDServer) Run(ctx context.Context) error {
 	for _, f := range devicesById {
 		p, err := filepath.EvalSymlinks(path.Join(dirById, f.Name()))
 		if err != nil {
-			log.Print(err)
+			h.Log.Warn("Failed to load device symlink", "error", err)
 			continue
 		}
 
@@ -68,7 +70,7 @@ func (h *HIDServer) Run(ctx context.Context) error {
 		strIndex := p[len(eventPathBase):]
 		index, err := strconv.Atoi(strIndex)
 		if err != nil {
-			log.Print(err)
+			h.Log.Warn("Device path not in the expected form '/dev/input/event##'", "error", err)
 			continue
 		}
 		deviceType := int32(-1)
@@ -87,13 +89,13 @@ func (h *HIDServer) Run(ctx context.Context) error {
 		})
 	}
 
-	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", config.Port))
+	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", h.Cfg.HIDPort))
 	if err != nil {
 		return (err)
 	}
 	defer listener.Close()
 
-	log.Print("listening")
+	h.Log.Info("Listening")
 
 	mux := NewConnMux()
 	defer mux.Close()
@@ -101,9 +103,9 @@ func (h *HIDServer) Run(ctx context.Context) error {
 	for _, device := range devices {
 		if device.Type != -1 {
 			go func(device *Device) {
-				err = readDevice(device, mux)
+				err = h.readDevice(device, mux)
 				if err != nil {
-					log.Printf("device %s failed: %v", device.Name, err)
+					h.Log.Warn("Device reading failed", "device", device.Name, "error", err)
 				}
 			}(device)
 		}
@@ -111,21 +113,21 @@ func (h *HIDServer) Run(ctx context.Context) error {
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
-			log.Print(err)
+			h.Log.Warn("Error accepting new connection", "error", err)
 			continue
 		}
 		mux.Add(conn)
 	}
 }
 
-func readDevice(device *Device, w io.Writer) error {
+func (h *HIDServer) readDevice(device *Device, w io.Writer) error {
 	f, err := os.Open(device.Path)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
 
-	log.Printf("connected to %s", device.Name)
+	h.Log.Info("Device connected", "device", device.Name)
 
 	e := common.InputEvent{}
 	outBuffer := make([]byte, 0, e.Size()*8)
@@ -138,7 +140,7 @@ func readDevice(device *Device, w io.Writer) error {
 
 		err = e.UnmarshalBinary(b)
 		if err != nil {
-			log.Print(err)
+			h.Log.Warn("Error decoding device event", "error", err)
 			continue
 		}
 
@@ -152,14 +154,14 @@ func readDevice(device *Device, w io.Writer) error {
 		// spew.Dump(e)
 		out, err := e.MarshalBinary()
 		if err != nil {
-			log.Print(err)
+			h.Log.Warn("Error encoding device event", "error", err)
 			continue
 		}
 		outBuffer = append(outBuffer, out...)
 		if e.EventType == common.EV_SYN {
 			_, err = w.Write(outBuffer)
 			if err != nil {
-				log.Print(err)
+				h.Log.Warn("Error sending device events", "error", err)
 				continue
 			}
 			outBuffer = outBuffer[:0]

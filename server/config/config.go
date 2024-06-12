@@ -19,6 +19,8 @@ type Config struct {
 	Database dialects.Config
 	Mail     email.Config
 	Queue    event.Config
+
+	HIDPort int
 }
 
 func Load() *Config {
@@ -31,6 +33,7 @@ func Load() *Config {
 
 	return &Config{
 		Port:     env.Int("PORT", 2303),
+		HIDPort:  env.Int("HID_PORT", 38808),
 		BasePath: env.String("BASE_PATH", ""),
 		Database: sqlite.NewConfig(env.String("DATABASE_PATH", "./db.sqlite")),
 		Queue:    event.NewChannelQueueConfig(),

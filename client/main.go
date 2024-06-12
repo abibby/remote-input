@@ -135,12 +135,12 @@ func main() {
 func handleEvent(events []common.InputEvent) error {
 	syn := events[len(events)-1]
 	rest := events[:len(events)-1]
-	// if syn.Value == common.DeviceTypeKeyboard {
-	// 	return handleKeyboard(rest)
-	// }
-	// if syn.Value == common.DeviceTypeMouse {
-	// 	return handleMouse(rest)
-	// }
+	if syn.Value == common.DeviceTypeKeyboard {
+		return handleKeyboard(rest)
+	}
+	if syn.Value == common.DeviceTypeMouse {
+		return handleMouse(rest)
+	}
 	if syn.Value == common.DeviceTypeJoystick {
 		return handleJoystick(rest, syn.Code)
 	}
