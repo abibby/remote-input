@@ -11,8 +11,10 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/abibby/remote-input/bluetoothctl"
 	"github.com/abibby/remote-input/common"
 	"github.com/abibby/remote-input/config"
+	"github.com/davecgh/go-spew/spew"
 )
 
 // var enabledEventTypes = [0x1f]bool{
@@ -32,6 +34,19 @@ const eventPathBase = "/dev/input/event"
 const dirById = "/dev/input/by-id"
 
 func main() {
+
+	devs, errs := bluetoothctl.Scan()
+	for {
+		select {
+		case device := <-devs:
+			spew.Dump(device)
+		case err := <-errs:
+			log.Fatal(err)
+		}
+	}
+
+	spew.Dump("test")
+
 	devicesById, err := os.ReadDir(dirById)
 	if err != nil {
 		log.Fatal(err)
