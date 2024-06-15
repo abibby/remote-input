@@ -4,11 +4,36 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Remote Input</title>
-    <script type="module" src="/res/scan.js"></script>
+    {{ if eq .Env "production" }}
+    <script
+      src="https://unpkg.com/htmx.org@1.9.12"
+      integrity="sha384-ujb1lZYygJmzgSwoxRggbCHcjc0rB2XoQrxeTUQyRjrOnlCoYta87iKBWq3EsdM2"
+      crossorigin="anonymous"
+    ></script>
+    {{ else }}
+    <script
+      src="https://unpkg.com/htmx.org@1.9.12/dist/htmx.js"
+      integrity="sha384-qbtR4rS9RrUMECUWDWM2+YGgN3U4V4ZncZ0BvUcg9FGct0jqXz3PUdVpU1p0yrXS"
+      crossorigin="anonymous"
+    ></script>
+    {{ end }}
+    <script type="module" src="/res/hx-stream.js"></script>
   </head>
   <body>
     <h1>Remote Input</h1>
 
-    <button id="scan">Scan</button>
+    <button
+      id="scan-btn"
+      hx-post="/bluetooth/scan"
+      hx-target="#devices"
+      hx-stream="true"
+    >
+      Scan
+    </button>
+    <button onclick="htmx.trigger('#scan-btn', 'htmx:abort')">Stop</button>
+
+    <h2>Devices</h2>
+    <div id="devices"></div>
+    <div id="connecting"></div>
   </body>
 </html>

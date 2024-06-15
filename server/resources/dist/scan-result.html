@@ -1,0 +1,9 @@
+<div class="scan-result">
+  <div class="name">{{ .LocalName }}</div>
+  <div class="address">{{ .Address }}</div>
+  <div>
+    <button hx-post="/bluetooth/connect/{{ .Address }}" hx-target="#connecting">
+      Connect
+    </button>
+  </div>
+</div>
