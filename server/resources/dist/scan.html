@@ -1,0 +1,12 @@
+{{ template "layout-upper" }}
+<a class="btn" href="{{ route "home" }}">Home</a>
+<div
+  id="scan-results"
+  hx-ext="sse"
+  sse-connect="/bluetooth/scan"
+  sse-swap="scan-results"
+  hx-swap="beforeend"
+>
+  scan results
+</div>
+{{ template "layout-lower" }}

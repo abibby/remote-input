@@ -4,8 +4,8 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
-	"time"
 
+	"github.com/abibby/remote-input/server/eventsource"
 	"github.com/abibby/salusa/request"
 	"github.com/abibby/salusa/set"
 	"github.com/abibby/salusa/view"
@@ -26,27 +26,12 @@ type Device struct {
 
 var BluetoothScan = request.Handler(func(r *BluetoothScanRequest) (http.Handler, error) {
 	return http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		added := set.New[string]()
-		go func() {
-			err := r.Adapter.Scan(func(a *bluetooth.Adapter, device bluetooth.ScanResult) {
-				addr := device.Address.String()
-				if added.Has(addr) || device.LocalName() == "" {
-					return
-				}
-				added.Add(addr)
 
-				err := view.View("scan-result.html", &Device{
-					Address:   addr,
-					RSSI:      device.RSSI,
-					LocalName: device.LocalName(),
-				}).Execute(r.Ctx, w)
-				if err != nil {
-					r.Log.Warn("failed to load device view", "error", err)
-					return
-				}
-				if f, ok := w.(http.Flusher); ok {
-					f.Flush()
-				}
+		scanResults := make(chan bluetooth.ScanResult)
+
+		go func() {
+			err := r.Adapter.Scan(func(a *bluetooth.Adapter, sr bluetooth.ScanResult) {
+				scanResults <- sr
 			})
 			if err != nil {
 				r.Log.Error("Scan failed", "error", err)
@@ -54,18 +39,48 @@ var BluetoothScan = request.Handler(func(r *BluetoothScanRequest) (http.Handler,
 			}
 		}()
 
-		select {
-		case <-r.Ctx.Done():
-			r.Log.Info("closed")
-		case <-time.After(time.Minute * 5):
-			r.Log.Info("timeout")
+		defer func() {
+			err := r.Adapter.StopScan()
+			if err != nil {
+				r.Log.Error("Stop scan failed", "error", err)
+				return
+			}
+			r.Log.Info("scan stopped")
+		}()
+		added := set.New[string]()
+		es := eventsource.New(w)
+		for {
+			select {
+			case scanResult := <-scanResults:
+				addr := scanResult.Address.String()
+				if added.Has(addr) || scanResult.LocalName() == "" {
+					continue
+				}
+				added.Add(addr)
+
+				b, err := view.View("scan-result.html", &Device{
+					Address:   addr,
+					RSSI:      scanResult.RSSI,
+					LocalName: scanResult.LocalName(),
+				}).Bytes(r.Ctx)
+				if err != nil {
+					r.Log.Warn("failed to load device view", "error", err)
+					return
+				}
+				err = es.Send(&eventsource.Event{
+					Event: "scan-results",
+					Data:  string(b),
+				})
+				if err != nil {
+					r.Log.Warn("failed to send scan results", "error", err)
+					return
+				}
+			case <-r.Ctx.Done():
+				r.Log.Info("closed")
+				return
+			}
 		}
 
-		err := r.Adapter.StopScan()
-		if err != nil {
-			r.Log.Error("Stop scan failed", "error", err)
-			return
-		}
 	}), nil
 })
 

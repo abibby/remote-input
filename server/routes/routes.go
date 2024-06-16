@@ -21,10 +21,11 @@ func InitRoutes(r *router.Router) {
 	}
 	r.Handle("/res", http.FileServerFS(distContent))
 
-	r.Get("/", view.View("index.html", map[string]any{"Env": "development"})).Name("home")
+	r.Get("/", view.View("index.html", nil)).Name("home")
+	r.Get("/scan", view.View("scan.html", nil)).Name("scan")
 
 	r.Group("/bluetooth", func(r *router.Router) {
-		r.Post("/scan", handlers.BluetoothScan)
+		r.Get("/scan", handlers.BluetoothScan)
 		r.Post("/connect/{address}", handlers.BluetoothConnect)
 	})
 }
