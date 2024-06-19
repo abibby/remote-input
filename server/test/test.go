@@ -9,7 +9,6 @@ import (
 	"github.com/abibby/remote-input/server/migrations"
 	"github.com/abibby/salusa/database/dbtest"
 	"github.com/abibby/salusa/database/dialects/sqlite"
-	"github.com/abibby/salusa/email/emailtest"
 	"github.com/abibby/salusa/event"
 	"github.com/abibby/salusa/kernel/kerneltest"
 	"github.com/jmoiron/sqlx"
@@ -42,6 +41,5 @@ var Kernel = kerneltest.NewTestKernelFactory(app.Kernel, &config.Config{
 	BasePath: "https://example.test",
 
 	Database: sqlite.NewConfig(":memory:"),
-	Mail:     emailtest.NewTestMailerConfig(),
 	Queue:    event.NewChannelQueueConfig(),
 })

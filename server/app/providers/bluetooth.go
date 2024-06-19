@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/abibby/remote-input/bluetooth"
 	"github.com/abibby/remote-input/server/config"
 	"github.com/abibby/salusa/di"
 	"github.com/godbus/dbus/v5"
@@ -27,9 +26,6 @@ func RegisterBluetoothAdapter(ctx context.Context) error {
 
 	di.RegisterSingleton(ctx, func() *dbus.Conn {
 		return conn
-	})
-	di.RegisterLazySingletonWith(ctx, func(conn *dbus.Conn) (*bluetooth.Bluetooth, error) {
-		return bluetooth.New(conn), nil
 	})
 	di.RegisterLazySingletonWith(ctx, func(cfg *config.Config) (*adapter.Adapter1, error) {
 		a, err := adapter.GetAdapter(cfg.AdapterID)
