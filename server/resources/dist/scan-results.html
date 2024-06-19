@@ -1,0 +1,22 @@
+{{ range . }}
+<div class="scan-result">
+  <div class="alias">{{ .Properties.Alias }}</div>
+  <div>
+    {{ if .Properties.Paired }}
+      <button hx-post="/bluetooth/device/{{ .Properties.Address }}/forget">
+        Forget
+      </button>
+    {{ end }} 
+    
+    {{ if not .Properties.Paired }}
+      <button hx-post="/bluetooth/device/{{ .Properties.Address }}/pair">
+        Pair
+      </button>
+    {{ else if not .Properties.Connected }}
+      <button hx-post="/bluetooth/device/{{ .Properties.Address }}/connect">
+        Connect
+      </button>
+    {{ end }}
+  </div>
+</div>
+{{ end }}

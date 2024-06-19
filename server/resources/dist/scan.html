@@ -1,12 +1,15 @@
 {{ template "layout-upper" }}
 <a class="btn" href="{{ route "home" }}">Home</a>
-<div
-  id="scan-results"
-  hx-ext="sse"
-  sse-connect="/bluetooth/scan"
-  sse-swap="scan-results"
-  hx-swap="beforeend"
->
-  scan results
+
+<button hx-post="/bluetooth/scan/on" hx-target="#status">scan on</button>
+<button hx-post="/bluetooth/scan/off" hx-target="#status">scan off</button>
+
+<div id="status"></div>
+
+<h2>Devices</h2>
+<div hx-ext="sse" sse-connect="/bluetooth/events">
+  <div id="scan-results" sse-swap="scan-results">
+    {{ template "scan-results.html" .Devices }}
+  </div>
 </div>
 {{ template "layout-lower" }}

@@ -6,7 +6,6 @@ import (
 
 	"github.com/abibby/salusa/database/dialects"
 	"github.com/abibby/salusa/database/dialects/sqlite"
-	"github.com/abibby/salusa/email"
 	"github.com/abibby/salusa/env"
 	"github.com/abibby/salusa/event"
 	"github.com/joho/godotenv"
@@ -17,10 +16,10 @@ type Config struct {
 	BasePath string
 
 	Database dialects.Config
-	Mail     email.Config
 	Queue    event.Config
 
-	HIDPort int
+	HIDPort   int
+	AdapterID string
 }
 
 func Load() *Config {
@@ -32,18 +31,12 @@ func Load() *Config {
 	}
 
 	return &Config{
-		Port:     env.Int("PORT", 2303),
-		HIDPort:  env.Int("HID_PORT", 38808),
-		BasePath: env.String("BASE_PATH", ""),
-		Database: sqlite.NewConfig(env.String("DATABASE_PATH", "./db.sqlite")),
-		Queue:    event.NewChannelQueueConfig(),
-		Mail: &email.SMTPConfig{
-			From:     env.String("MAIL_FROM", "salusa@example.com"),
-			Host:     env.String("MAIL_HOST", "sandbox.smtp.mailtrap.io"),
-			Port:     env.Int("MAIL_PORT", 2525),
-			Username: env.String("MAIL_USERNAME", "user"),
-			Password: env.String("MAIL_PASSWORD", "pass"),
-		},
+		Port:      env.Int("PORT", 2303),
+		HIDPort:   env.Int("HID_PORT", 38808),
+		AdapterID: env.String("BLUETOOTH_ADAPTER_ID", "hci0"),
+		BasePath:  env.String("BASE_PATH", ""),
+		Database:  sqlite.NewConfig(env.String("DATABASE_PATH", "./db.sqlite")),
+		Queue:     event.NewChannelQueueConfig(),
 	}
 }
 
@@ -56,9 +49,6 @@ func (c *Config) GetBaseURL() string {
 
 func (c *Config) DBConfig() dialects.Config {
 	return c.Database
-}
-func (c *Config) MailConfig() email.Config {
-	return c.Mail
 }
 func (c *Config) QueueConfig() event.Config {
 	return c.Queue

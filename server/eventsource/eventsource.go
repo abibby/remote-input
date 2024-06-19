@@ -1,34 +1,54 @@
 package eventsource
 
-import "net/http"
+import (
+	"io"
+	"log"
+	"net/http"
+)
 
 type EventSource struct {
-	w http.ResponseWriter
+	events       chan *Event
+	errorHandler func(err error)
 }
 
-func New(w http.ResponseWriter) *EventSource {
+func New(events chan *Event) *EventSource {
+	return &EventSource{
+		events: events,
+		errorHandler: func(err error) {
+			log.Print(err)
+		},
+	}
+}
+
+func (s *EventSource) SetErrorHandler(errorHandler func(error)) *EventSource {
+	s.errorHandler = errorHandler
+	return s
+}
+func (s *EventSource) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/event-stream")
-	return &EventSource{w: w}
+	for e := range s.events {
+		err := send(w, e)
+		if err != nil {
+			s.errorHandler(err)
+		}
+	}
 }
 
-func (s *EventSource) Send(e *Event) error {
+func send(w io.Writer, e *Event) error {
 	b, err := e.MarshalText()
 	if err != nil {
 		return err
 	}
 
-	_, err = s.w.Write(b)
+	_, err = w.Write(append(b, '\n', '\n'))
 	if err != nil {
 		return err
 	}
 
-	_, err = s.w.Write([]byte("\n\n"))
-	if err != nil {
-		return err
-	}
-
-	if f, ok := s.w.(http.Flusher); ok {
+	if f, ok := w.(http.Flusher); ok {
 		f.Flush()
 	}
+
+	log.Printf("send %s", e.Event)
 	return nil
 }

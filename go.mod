@@ -16,7 +16,9 @@ require (
 
 require (
 	github.com/abibby/salusa v0.11.1
+	github.com/godbus/dbus/v5 v5.1.0
 	github.com/jmoiron/sqlx v1.4.0
+	github.com/muka/go-bluetooth v0.0.0-20240115085408-dfdf79b8f61d
 	golang.org/x/sys v0.19.0
 	modernc.org/sqlite v1.30.1
 	tinygo.org/x/bluetooth v0.9.0
@@ -24,9 +26,9 @@ require (
 
 require (
 	github.com/dustin/go-humanize v1.0.1 // indirect
+	github.com/fatih/structs v1.1.0 // indirect
 	github.com/go-mail/mail v2.3.1+incompatible // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
-	github.com/godbus/dbus/v5 v5.1.0 // indirect
 	github.com/golang-jwt/jwt/v4 v4.5.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/mux v1.8.0 // indirect

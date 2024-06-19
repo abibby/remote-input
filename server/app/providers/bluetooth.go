@@ -4,18 +4,40 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/abibby/remote-input/bluetooth"
+	"github.com/abibby/remote-input/server/config"
 	"github.com/abibby/salusa/di"
-	"tinygo.org/x/bluetooth"
+	"github.com/godbus/dbus/v5"
+	"github.com/muka/go-bluetooth/bluez/profile/adapter"
+	"github.com/muka/go-bluetooth/bluez/profile/agent"
+	log "github.com/sirupsen/logrus"
 )
 
 func RegisterBluetoothAdapter(ctx context.Context) error {
-	di.RegisterLazySingleton(ctx, func() (*bluetooth.Adapter, error) {
-		adapter := bluetooth.DefaultAdapter
-		err := adapter.Enable()
-		if err != nil {
-			return nil, fmt.Errorf("could not enable bluetooth adapter: %w", err)
-		}
-		return adapter, nil
+	log.SetLevel(log.ErrorLevel)
+	conn, err := dbus.SystemBus()
+	if err != nil {
+		return err
+	}
+	ag := agent.NewSimpleAgent()
+	err = agent.ExposeAgent(conn, ag, agent.CapKeyboardOnly, true)
+	if err != nil {
+		return fmt.Errorf("SimpleAgent: %s", err)
+	}
+
+	di.RegisterSingleton(ctx, func() *dbus.Conn {
+		return conn
 	})
+	di.RegisterLazySingletonWith(ctx, func(conn *dbus.Conn) (*bluetooth.Bluetooth, error) {
+		return bluetooth.New(conn), nil
+	})
+	di.RegisterLazySingletonWith(ctx, func(cfg *config.Config) (*adapter.Adapter1, error) {
+		a, err := adapter.GetAdapter(cfg.AdapterID)
+		if err != nil {
+			return nil, err
+		}
+		return a, nil
+	})
+
 	return nil
 }
