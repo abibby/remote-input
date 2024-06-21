@@ -24,6 +24,9 @@ bin/server: FORCE bin
 bin/linux-arm64/server: FORCE bin/linux-arm
 	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 $(GC) build -o ./bin/linux-arm64/server ./server 
 
+bin/windows-amd64/client.exe: FORCE bin/windows-amd64
+	CGO_ENABLED=0 GOOS=windows GOARCH=amd64 $(GC) build -o ./bin/windows-amd64/client.exe ./client 
+
 tidy:
 	$(GC) mod tidy
 
@@ -36,5 +39,7 @@ bin:
 
 bin/linux-arm:
 	mkdir bin/linux-arm
+bin/windows-amd64:
+	mkdir bin/windows-amd64
 
 FORCE: ;
