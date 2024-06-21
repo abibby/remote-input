@@ -6,10 +6,14 @@
 
 <div id="status"></div>
 
-<h2>Devices</h2>
 <div hx-ext="sse" sse-connect="/bluetooth/events">
+  <h2>Devices</h2>
   <div id="scan-results" sse-swap="scan-results">
     {{ template "scan-results.html" .Devices }}
+  </div>
+
+  
+  <div sse-swap="display-pin-code">
   </div>
 </div>
 {{ template "layout-lower" }}

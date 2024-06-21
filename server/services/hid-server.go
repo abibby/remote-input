@@ -1,17 +1,17 @@
 package services
 
 import (
+	"bytes"
 	"context"
+	"encoding"
 	"errors"
 	"fmt"
 	"io"
 	"log/slog"
 	"net"
 	"os"
-	"path"
-	"path/filepath"
+	"regexp"
 	"strconv"
-	"strings"
 	"syscall"
 	"time"
 
@@ -34,8 +34,44 @@ type Device struct {
 	Type  int32
 }
 
-const eventPathBase = "/dev/input/event"
-const dirById = "/dev/input/by-id"
+var _ encoding.TextUnmarshaler = (*Device)(nil)
+
+var eventRE = regexp.MustCompile(`event\d+`)
+
+func (d *Device) UnmarshalText(text []byte) error {
+	lines := bytes.Split(text, []byte("\n"))
+	d.Type = -1
+	for _, line := range lines {
+		if len(line) == 0 {
+			continue
+		}
+		switch line[0] {
+		case 'N':
+			d.Name = string(line[len("N: Name=\"") : len(line)-1])
+		case 'H':
+			match := eventRE.Find(line)
+			d.Path = "/dev/input/" + string(match)
+			i, err := strconv.ParseUint(string(match[len("event"):]), 10, 16)
+			if err != nil {
+				return err
+			}
+			d.Index = uint16(i)
+			if bytes.Contains(line, []byte("kbd")) {
+				d.Type = common.DeviceTypeKeyboard
+			} else if bytes.Contains(line, []byte("mouse")) {
+				d.Type = common.DeviceTypeMouse
+			} else if bytes.Contains(line, []byte("joystick")) {
+				d.Type = common.DeviceTypeJoystick
+			}
+		}
+	}
+	return nil
+}
+
+// func (d *Device) UnmarshalBinary()
+
+// const eventPathBase = "/dev/input/event"
+// const dirById = "/dev/input/by-id"
 
 type HIDServer struct {
 	Cfg *config.Config `inject:""`
@@ -166,46 +202,25 @@ func (h *HIDServer) readDevice(ctx context.Context, device *Device, w io.Writer)
 }
 
 func (h *HIDServer) getDevices() ([]*Device, error) {
-	devicesById, err := os.ReadDir(dirById)
+
+	b, err := os.ReadFile("/proc/bus/input/devices")
 	if err != nil {
 		return nil, err
 	}
 
-	devices := []*Device{}
-	for _, f := range devicesById {
-		p, err := filepath.EvalSymlinks(path.Join(dirById, f.Name()))
+	bDevices := bytes.Split(b, []byte("\n\n"))
+
+	devices := make([]*Device, 0, len(bDevices))
+	for _, b := range bDevices {
+		d := &Device{}
+		err = d.UnmarshalText(b)
 		if err != nil {
-			h.Log.Warn("Failed to load device symlink", "error", err)
+			return nil, err
+		}
+		if d.Type == -1 {
 			continue
 		}
-
-		if !strings.HasPrefix(p, eventPathBase) {
-			continue
-		}
-
-		strIndex := p[len(eventPathBase):]
-		index, err := strconv.Atoi(strIndex)
-		if err != nil {
-			h.Log.Warn("Device path not in the expected form '/dev/input/event##'", "error", err)
-			continue
-		}
-		deviceType := int32(-1)
-		if strings.HasSuffix(f.Name(), "-kbd") {
-			deviceType = common.DeviceTypeKeyboard
-		} else if strings.HasSuffix(f.Name(), "-event-mouse") {
-			deviceType = common.DeviceTypeMouse
-		} else if strings.HasSuffix(f.Name(), "-event-joystick") {
-			deviceType = common.DeviceTypeJoystick
-		}
-
-		if deviceType != -1 {
-			devices = append(devices, &Device{
-				Name:  f.Name(),
-				Path:  p,
-				Index: uint16(index),
-				Type:  deviceType,
-			})
-		}
+		devices = append(devices, d)
 	}
 	return devices, nil
 }

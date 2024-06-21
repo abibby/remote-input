@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"slices"
 
+	"github.com/abibby/remote-input/server/app/providers"
 	"github.com/abibby/remote-input/server/eventsource"
 	"github.com/abibby/salusa/request"
 	"github.com/abibby/salusa/view"
@@ -29,9 +30,10 @@ var BluetoothScanView = request.Handler(func(r *BluetoothScanViewRequest) (*view
 })
 
 type BluetoothEventsRequest struct {
-	Adapter *adapter.Adapter1 `inject:""`
-	Log     *slog.Logger      `inject:""`
-	Ctx     context.Context   `inject:""`
+	Adapter       *adapter.Adapter1       `inject:""`
+	PinCodeEvents providers.PinCodeEvents `inject:""`
+	Log           *slog.Logger            `inject:""`
+	Ctx           context.Context         `inject:""`
 }
 
 var BluetoothEvents = request.Handler(func(r *BluetoothEventsRequest) (*eventsource.EventSource, error) {
@@ -77,6 +79,11 @@ var BluetoothEvents = request.Handler(func(r *BluetoothEventsRequest) (*eventsou
 				es <- &eventsource.Event{
 					Event: "scan-results",
 					Data:  string(b),
+				}
+			case pin := <-r.PinCodeEvents:
+				es <- &eventsource.Event{
+					Event: "display-pin-code",
+					Data:  pin,
 				}
 			case <-r.Ctx.Done():
 				return
@@ -182,10 +189,10 @@ var BluetoothPair = request.Handler(func(r *BluetoothPairRequest) (string, error
 		return "", err
 	}
 
-	// err = device.SetTrusted(true)
-	// if err != nil {
-	// 	return "", err
-	// }
+	err = device.SetTrusted(true)
+	if err != nil {
+		return "", err
+	}
 
 	err = device.Connect()
 	if err != nil {

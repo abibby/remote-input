@@ -22,7 +22,7 @@ func InitRoutes(r *router.Router) {
 	r.Handle("/res", http.FileServerFS(distContent))
 
 	r.Get("/", view.View("index.html", nil)).Name("home")
-	r.Get("/scan", handlers.BluetoothScanView).Name("scan")
+	r.Get("/devices", handlers.BluetoothScanView).Name("devices")
 
 	r.Group("/bluetooth", func(r *router.Router) {
 		r.Get("/events", handlers.BluetoothEvents)
