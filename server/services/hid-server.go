@@ -21,11 +21,7 @@ import (
 	"github.com/abibby/salusa/set"
 )
 
-// var enabledEventTypes = [0x1f]bool{
-// 	common.EV_KEY: true,
-// 	common.EV_REL: true,
-// 	common.EV_ABS: true,
-// }
+var ConnectedDevices = []string{}
 
 type Device struct {
 	Name     string
@@ -126,6 +122,7 @@ func (h *HIDServer) Run(ctx context.Context) error {
 		devices := map[string]*Device{}
 		cancels := map[string]context.CancelFunc{}
 		for range ticker.C {
+			hasChange := false
 			found := set.New[string]()
 			newDevices, err := h.getDevices()
 			if err != nil {
@@ -141,6 +138,7 @@ func (h *HIDServer) Run(ctx context.Context) error {
 					devices[path] = device
 					cancels[path] = cancel
 
+					hasChange = true
 					go h.readDevice(ctx, device, mux)
 				}
 				found.Add(path)
@@ -149,9 +147,16 @@ func (h *HIDServer) Run(ctx context.Context) error {
 				if found.Has(path) {
 					continue
 				}
+				hasChange = true
 				cancels[path]()
 				delete(devices, path)
 				delete(cancels, path)
+			}
+			if hasChange {
+				ConnectedDevices = make([]string, len(newDevices))
+				for i, device := range newDevices {
+					ConnectedDevices[i] = device.Name
+				}
 			}
 		}
 	}()

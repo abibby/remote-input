@@ -2,6 +2,12 @@
 
 <h1>Remote Input</h1>
 
-<a class="btn" href="{{ route "devices" }}">Devices</a>
+<a class="btn" href="{{ route "devices" }}">Bluetooth</a>
+
+<ul>
+    {{ range $device := .Devices }}
+        <li>{{ $device }}</li>
+    {{ end }}
+</ul>
 
 {{ template "layout-lower" }}

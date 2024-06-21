@@ -3,7 +3,6 @@ package services
 import (
 	"errors"
 	"io"
-	"log"
 	"net"
 	"os"
 	"sync"
@@ -76,7 +75,6 @@ func (m *ConnMux) Add(conn net.Conn) {
 	m.add(conn)
 }
 func (m *ConnMux) add(conn net.Conn) {
-	log.Printf("add %s", conn.RemoteAddr())
 	m.conns = append(m.conns, conn)
 }
 func (m *ConnMux) Remove(conn net.Conn) error {
@@ -85,7 +83,6 @@ func (m *ConnMux) Remove(conn net.Conn) error {
 	return m.remove(conn)
 }
 func (m *ConnMux) remove(conn net.Conn) error {
-	log.Printf("remove %s", conn.RemoteAddr())
 	for i, c := range m.conns {
 		if c == conn {
 			if i != len(m.conns)-1 {

@@ -8,7 +8,6 @@ import (
 	"github.com/abibby/remote-input/server/resources"
 	"github.com/abibby/salusa/request"
 	"github.com/abibby/salusa/router"
-	"github.com/abibby/salusa/view"
 )
 
 func InitRoutes(r *router.Router) {
@@ -21,7 +20,7 @@ func InitRoutes(r *router.Router) {
 	}
 	r.Handle("/res", http.FileServerFS(distContent))
 
-	r.Get("/", view.View("index.html", nil)).Name("home")
+	r.Get("/", handlers.Home).Name("home")
 	r.Get("/devices", handlers.BluetoothScanView).Name("devices")
 
 	r.Group("/bluetooth", func(r *router.Router) {

@@ -49,6 +49,5 @@ func send(w io.Writer, e *Event) error {
 		f.Flush()
 	}
 
-	log.Printf("send %s", e.Event)
 	return nil
 }
