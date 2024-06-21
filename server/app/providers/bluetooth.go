@@ -10,6 +10,7 @@ import (
 	"github.com/godbus/dbus/v5"
 	"github.com/muka/go-bluetooth/bluez/profile/adapter"
 	"github.com/muka/go-bluetooth/bluez/profile/agent"
+	"github.com/sirupsen/logrus"
 )
 
 type Agent struct {
@@ -35,7 +36,7 @@ func (a *Agent) DisplayPasskey(device dbus.ObjectPath, passkey uint32, entered u
 type PinCodeEvents chan string
 
 func RegisterBluetoothAdapter(ctx context.Context) error {
-	// log.SetLevel(log.ErrorLevel)
+	logrus.SetLevel(logrus.ErrorLevel)
 	conn, err := dbus.SystemBus()
 	if err != nil {
 		return err
@@ -53,12 +54,7 @@ func RegisterBluetoothAdapter(ctx context.Context) error {
 	di.RegisterSingleton(ctx, func() *dbus.Conn {
 		return conn
 	})
-	di.RegisterSingleton(ctx, func() *Agent {
-		return ag
-	})
-	di.RegisterSingleton(ctx, func() agent.Agent1Client {
-		return ag
-	})
+
 	di.RegisterLazySingletonWith(ctx, func(cfg *config.Config) (*adapter.Adapter1, error) {
 		a, err := adapter.GetAdapter(cfg.AdapterID)
 		if err != nil {
@@ -67,6 +63,9 @@ func RegisterBluetoothAdapter(ctx context.Context) error {
 		return a, nil
 	})
 
+	di.RegisterLazySingletonWith(ctx, func(conn *dbus.Conn) (*Agent, error) {
+		return ag, nil
+	})
 	di.RegisterWith(ctx, func(ctx context.Context, tag string, agent *Agent) (PinCodeEvents, error) {
 		agent.mtx.Lock()
 		defer agent.mtx.Unlock()

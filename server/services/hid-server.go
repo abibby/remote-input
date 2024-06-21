@@ -11,7 +11,7 @@ import (
 	"net"
 	"os"
 	"regexp"
-	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -28,7 +28,12 @@ import (
 // }
 
 type Device struct {
-	Name  string
+	Name     string
+	Phys     string
+	Sysfs    string
+	Uniq     string
+	Handlers []string
+
 	Path  string
 	Index uint16
 	Type  int32
@@ -37,6 +42,8 @@ type Device struct {
 var _ encoding.TextUnmarshaler = (*Device)(nil)
 
 var eventRE = regexp.MustCompile(`event\d+`)
+var joystickRE = regexp.MustCompile(`js\d+`)
+var mouseRE = regexp.MustCompile(`mouse\d+`)
 
 func (d *Device) UnmarshalText(text []byte) error {
 	lines := bytes.Split(text, []byte("\n"))
@@ -45,27 +52,40 @@ func (d *Device) UnmarshalText(text []byte) error {
 		if len(line) == 0 {
 			continue
 		}
-		switch line[0] {
-		case 'N':
-			d.Name = string(line[len("N: Name=\"") : len(line)-1])
-		case 'H':
-			match := eventRE.Find(line)
-			d.Path = "/dev/input/" + string(match)
-			i, err := strconv.ParseUint(string(match[len("event"):]), 10, 16)
-			if err != nil {
-				return err
-			}
-			d.Index = uint16(i)
-			if bytes.Contains(line, []byte("kbd")) {
-				d.Type = common.DeviceTypeKeyboard
-			} else if bytes.Contains(line, []byte("mouse")) {
-				d.Type = common.DeviceTypeMouse
-			} else if bytes.Contains(line, []byte("joystick")) {
+		_, key, value := splitLine(line)
+		switch key {
+		case "Name":
+			d.Name = strings.Trim(value, `"`)
+		case "Phys":
+			d.Phys = value
+		case "Sysfs":
+			d.Sysfs = value
+		case "Uniq":
+			d.Uniq = value
+		case "Handlers":
+			d.Handlers = strings.Split(value, " ")
+
+			event := eventRE.FindString(value)
+
+			d.Path = "/dev/input/" + event
+			if joystickRE.MatchString(value) {
 				d.Type = common.DeviceTypeJoystick
+			} else if mouseRE.MatchString(value) {
+				d.Type = common.DeviceTypeMouse
+			} else if strings.Contains(value, "kbd") {
+				d.Type = common.DeviceTypeKeyboard
 			}
 		}
 	}
 	return nil
+}
+
+func splitLine(line []byte) (byte, string, string) {
+	parts := bytes.SplitN(line, []byte{'='}, 2)
+	start := parts[0]
+	value := parts[1]
+
+	return start[0], string(start[3:]), string(value)
 }
 
 // func (d *Device) UnmarshalBinary()

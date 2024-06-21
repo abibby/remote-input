@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"log"
 	"log/slog"
 	"slices"
 
@@ -55,7 +54,6 @@ var BluetoothEvents = request.Handler(func(r *BluetoothEventsRequest) (*eventsou
 				if s == nil {
 					return
 				}
-				log.Print(s.Name)
 
 				if s.Name != bluez.InterfacesAdded && s.Name != bluez.InterfacesRemoved {
 					r.Log.Info("unknown event", "name", s.Name)

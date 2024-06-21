@@ -183,7 +183,6 @@ func handleJoystick(events []common.InputEvent, index uint16) error {
 			case 0:
 				report.SetLeftThumbX(i16(e.Value))
 			case 1:
-				log.Print(e.Value)
 				report.SetLeftThumbY(-i16(e.Value))
 			case 2:
 				report.SetLeftTrigger(ui8(e.Value / (1024 / math.MaxUint8)))

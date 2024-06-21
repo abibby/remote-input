@@ -32,6 +32,7 @@ var keyMap = [255]windows.VirtualKey{
 	common.KEY_PAGEUP:     windows.VK_PRIOR,
 	common.KEY_PAGEDOWN:   windows.VK_NEXT,
 	common.KEY_INSERT:     windows.VK_INSERT,
+	common.KEY_RECORD:     windows.VK_SNAPSHOT,
 	// common.KEY_COMPOSE:    windows.VK_, // right click menu key
 
 	common.KEY_RIGHTCTRL:  windows.VK_RCONTROL,
