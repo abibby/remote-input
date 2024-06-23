@@ -6,13 +6,20 @@ import (
 	"strconv"
 
 	"github.com/joho/godotenv"
+	"github.com/kardianos/service"
 )
 
 var Host string
 var Port int
 
-func init() {
-	err := godotenv.Load()
+func Init(l service.Logger) {
+	// exe, err := os.Executable()
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	// absExe, err := filepath.Abs(exe)
+	// dir := filepath.Dir(absExe)
+	err := godotenv.Load("C:/Program Files/RemoteInput/.env")
 	if err == os.ErrNotExist {
 		// do nothing
 	} else if err != nil {

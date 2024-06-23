@@ -7,6 +7,7 @@ import (
 
 var keyMap = [255]windows.VirtualKey{
 	common.KEY_BACKSPACE:  windows.VK_BACK,
+	common.KEY_DELETE:     windows.VK_DELETE,
 	common.KEY_ENTER:      windows.VK_RETURN,
 	common.KEY_TAB:        windows.VK_TAB,
 	common.KEY_COMMA:      windows.VK_OEM_COMMA,

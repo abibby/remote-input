@@ -18,14 +18,17 @@ run-server: bin/server
 bin/client: FORCE bin
 	$(GC) build -o ./bin/client ./client
 
+client: FORCE bin
+	$(GC) build -o ./bin/remote-input-client.exe ./client
+
 bin/server: FORCE bin
 	$(GC) build -o ./bin/server ./server
 
 bin/linux-arm64/server: FORCE bin/linux-arm
 	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 $(GC) build -o ./bin/linux-arm64/server ./server 
 
-bin/windows-amd64/client.exe: FORCE bin/windows-amd64
-	CGO_ENABLED=0 GOOS=windows GOARCH=amd64 $(GC) build -o ./bin/windows-amd64/client.exe ./client 
+bin/windows-amd64/remote-input-client.exe: FORCE bin/windows-amd64
+	CGO_ENABLED=0 GOOS=windows GOARCH=amd64 $(GC) build -o ./bin/windows-amd64/remote-input-client.exe ./client 
 
 tidy:
 	$(GC) mod tidy
@@ -33,6 +36,8 @@ tidy:
 install_go:
 	go install golang.org/dl/$(GO_VERSION)@latest
 	$(GC) download
+install-client: bin/client
+	cp bin/client C:/ProgramFiles/RemoteInput/remote-input-client.exe
 
 bin:
 	mkdir bin

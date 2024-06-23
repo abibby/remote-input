@@ -109,6 +109,9 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	config.Init(prg.logger)
+
 	err = s.Run()
 	if err != nil {
 		prg.logger.Error(err)
